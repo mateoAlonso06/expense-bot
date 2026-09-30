@@ -1,4 +1,6 @@
 package com.expensebot.expenses;
 
-public record CategoryView() {
+import java.util.UUID;
+
+public record CategoryView(UUID id, String name) {
 }

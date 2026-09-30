@@ -1,13 +1,13 @@
-package com.billsbot;
+package com.expensebot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class BillsBotApplication {
+public class ExpenseBotApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BillsBotApplication.class, args);
+        SpringApplication.run(ExpenseBotApplication.class, args);
     }
 
 }

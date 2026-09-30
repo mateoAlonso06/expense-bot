@@ -8,11 +8,11 @@
         <version>4.1.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.billsbot</groupId>
-    <artifactId>bills-bot</artifactId>
+    <groupId>com.expensebot</groupId>
+    <artifactId>expense-bot</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>bills-bot</name>
-    <description>bills-bot</description>
+    <name>expense-bot</name>
+    <description>expense-bot</description>
     <url/>
     <licenses>
         <license/>
@@ -154,6 +154,12 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.5.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

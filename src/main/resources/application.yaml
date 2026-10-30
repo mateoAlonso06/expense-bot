@@ -10,6 +10,12 @@ spring:
   flyway:
     enabled: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/expense-bot}
+
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}

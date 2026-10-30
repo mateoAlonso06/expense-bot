@@ -6,7 +6,9 @@ Tracker: GitHub issues + project board `bills bot kanban` in `mateoAlonso06/bill
 
 ## Working rules (highest priority)
 
-- The user is still learning many concepts used here. If something needs a lot of code and the user has not explicitly asked to generate it, **do not write it: ask first**.
+- The assistant writes the code, **in small reviewable phases** (like a well-scoped PR). Each phase is a coherent slice (one use case, one adapter, one migration, one config block) with its tests, small enough to read in one sitting (aim for roughly 200-400 changed lines, never a whole feature at once).
+- After each phase: stop, summarize what changed and why (short), point out the key concepts to review (especially Spring / Spring AI usage), and wait for the user's go-ahead before starting the next phase. Do not commit until the user approves the phase.
+- The user is still learning many concepts used here. Explain any new Spring / Spring AI / security concept the first time it appears, briefly.
 - Keep explanations of implementations and configuration short and simple. Go longer only when the case genuinely needs more detail.
 - Reply in the user's language (Spanish). Code, comments, docs, issues, tests and commits are in English.
 - Conventional commits. Never add `Co-Authored-By` or any AI attribution to commits or PRs.
@@ -50,7 +52,7 @@ Each module has `domain`, `application`, `infrastructure`.
 - Channels: Telegram first (long polling in dev, webhook in prod, never both at once). The domain never sees channel-specific types. Identities stored as `(channel, external_id)`, unique.
 - Linking: the web user requests a single-use, short-TTL code (stored hashed); sending it to the bot creates the `channel_identity` from the sender id in the message.
 - Idempotency: unique `(channel, message_id)`.
-- Categories: global base catalog seeded by Flyway (`user_id` null). `Other` is a system category (never deletable or renamable, looked up by stable id). Users never have to provide a category; the agent infers it and falls back to `Other`. Custom categories are v2.
+- Categories: global base catalog seeded by Flyway (`user_id` null). Category names are user-facing data and are seeded in Spanish (`Alimentación`, `Vivienda`, `Transporte`, `Salud`, `Ocio`, `Servicios`, `Otros`). In code, docs and issues the fallback category is still called `Other`; its seeded display name is `Otros`. It is a system category (never deletable or renamable) and is always looked up by its stable id `00000000-0000-0000-0000-000000000001`, never by name. Users never have to provide a category; the agent infers it and falls back to `Other`. Custom categories are v2.
 - Expenses: amount `NUMERIC(19,2)` / `BigDecimal`, explicit currency (ARS). Only amount, description and category are editable; date, source channel and original message are immutable.
 - Only the amount is mandatory to extract; a low-confidence category never triggers a question.
 

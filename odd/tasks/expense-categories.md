@@ -6,7 +6,8 @@ Seed a base catalog of expense categories, with a system category `Other`, and e
 ## Constraints
 - Module `expenses`, hexagonal: domain (plain Java) / application / infrastructure. Public API in the module base package.
 - Outside-in: use case and its test first. Domain and persistence models are separate.
-- User writes the code by hand; assistant explains and reviews.
+- Assistant writes the code in small reviewable phases; user reviews each phase before the next one starts.
+- Category names are seeded in Spanish; `Other` is displayed as `Otros` and looked up by fixed id.
 - TDD: not configured (ordinary functional checks). Runner: `./mvnw test` (JDK 21).
 
 ## Tasks

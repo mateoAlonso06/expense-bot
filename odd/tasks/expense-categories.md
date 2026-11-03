@@ -16,7 +16,7 @@ Seed a base catalog of expense categories, with a system category `Other`, and e
 - [x] T3 Flyway `V1`: `category` table (`user_id` null for global) + seed catalog incl. `Other`.
 - [x] T4 Persistence adapter (JPA entity separate from the domain) implementing the port.
 - [x] T5 REST endpoint listing categories (controller; protected by JWT, covered by `JwtAuthenticationTest` from #3). Hibernate `ddl-auto: validate` so Flyway is the schema source of truth; minimal persistence test (`CategoryPersistenceAdapterTest`, real Postgres via Testcontainers) checks the seed: 7 categories, `Other` as the only system one with its fixed id.
-- [ ] T6 Logging where relevant; update/close issue #9.
+- [x] T6 Logging: none added on purpose (read-only use case, nothing to diagnose; Spring already logs requests and Flyway migrations). Added `CategoryControllerTest` to assert the JSON shape of `GET /api/categories`. Issue #9 to be closed when the branch is merged.
 
 ## Acceptance criteria (from #9)
 - Flyway seeds a base catalog (Alimentación, Vivienda, Transporte, Salud, Ocio, Servicios; seeded in Spanish).
@@ -24,6 +24,7 @@ Seed a base catalog of expense categories, with a system category `Other`, and e
 - An endpoint lists the available categories.
 
 ## Progress / next step
-T1-T5 done. Full suite green (14 tests); `validate` verified to fail startup when a mapped column is wrong. The endpoint is exercised against the DB through the persistence test, not through an end-to-end test (decided: the endpoint only delegates).
+T1-T6 done. Full suite green (15 tests); `validate` verified to fail startup when a mapped column is wrong.
+Acceptance criteria: seed and `Other` covered by the persistence test; "cannot be deleted or renamed" holds because the domain exposes no rename/delete operation yet (to be enforced when #23/#24 add them); listing covered by the controller and security tests.
 Open: the JPA entity does not map `user_id` yet, so `findAll` will need a filter when custom categories arrive (v2, #23).
-Next: T6 (logging where relevant, update/close issue #9).
+Next: merge the branch, then close #9 and continue with #4.

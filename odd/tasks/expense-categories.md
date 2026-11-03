@@ -15,14 +15,15 @@ Seed a base catalog of expense categories, with a system category `Other`, and e
 - [x] T2 Use case `ListCategories` + port `CategoryRepository` + unit test with a fake port.
 - [x] T3 Flyway `V1`: `category` table (`user_id` null for global) + seed catalog incl. `Other`.
 - [x] T4 Persistence adapter (JPA entity separate from the domain) implementing the port.
-- [ ] T5 REST endpoint listing categories (controller written; security rule and Testcontainers integration test pending).
+- [x] T5 REST endpoint listing categories (controller; protected by JWT, covered by `JwtAuthenticationTest` from #3). Hibernate `ddl-auto: validate` so Flyway is the schema source of truth; minimal persistence test (`CategoryPersistenceAdapterTest`, real Postgres via Testcontainers) checks the seed: 7 categories, `Other` as the only system one with its fixed id.
 - [ ] T6 Logging where relevant; update/close issue #9.
 
 ## Acceptance criteria (from #9)
-- Flyway seeds a base catalog (Food, Housing, Transport, Health, Leisure, Services).
+- Flyway seeds a base catalog (Alimentación, Vivienda, Transporte, Salud, Ocio, Servicios; seeded in Spanish).
 - Catalog includes system category `Other` (not deletable/renamable, exists for every user).
 - An endpoint lists the available categories.
 
 ## Progress / next step
-T1-T4 done (unit tests, ArchitectureTest pass; migration validated in a rolled-back transaction). JPA entity has audit timestamps. Not yet exercised against the DB from the app.
-Next: T5 (security rule for /api/categories + integration test), then T6.
+T1-T5 done. Full suite green (14 tests); `validate` verified to fail startup when a mapped column is wrong. The endpoint is exercised against the DB through the persistence test, not through an end-to-end test (decided: the endpoint only delegates).
+Open: the JPA entity does not map `user_id` yet, so `findAll` will need a filter when custom categories arrive (v2, #23).
+Next: T6 (logging where relevant, update/close issue #9).

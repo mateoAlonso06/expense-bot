@@ -7,6 +7,10 @@ spring:
     username: ${DB_USERNAME:mateo-local}
     password: ${DB_PASSWORD:secret}
 
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
   flyway:
     enabled: true
 

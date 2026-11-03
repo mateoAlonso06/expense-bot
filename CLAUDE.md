@@ -49,9 +49,10 @@ Each module has `domain`, `application`, `infrastructure`.
 
 - Auth: Keycloak is the identity provider (local login + Google as a Keycloak identity provider). The SPA logs in via Authorization Code + PKCE; the API only validates JWTs (`issuer-uri`). No `oauth2-client` in this app.
 - Users live in Keycloak; the app keeps a `user_profile` keyed by the token `sub`.
-- Channels: Telegram first (long polling in dev, webhook in prod, never both at once). The domain never sees channel-specific types. Identities stored as `(channel, external_id)`, unique.
+- Channels: Telegram first (long polling in dev, webhook in prod, never both at once). The domain never sees channel-specific types. Identities stored as `(channel, external_id)`, unique; a user links at most one account per channel (`UNIQUE (user_id, channel)`).
 - Linking: the web user requests a single-use, short-TTL code (stored hashed); sending it to the bot creates the `channel_identity` from the sender id in the message.
-- Idempotency: unique `(channel, message_id)`.
+- Database: foreign keys between modules are enforced in the database (the app will not become microservices). In code, modules still reference each other by id only and never share JPA entities.
+- Idempotency: unique `(channel, event_id)`, where `event_id` is a delivery id unique across the whole channel. Telegram's `message_id` is only unique per chat, so the Telegram adapter uses the `update_id`; WhatsApp uses its message id.
 - Categories: global base catalog seeded by Flyway (`user_id` null). Category names are user-facing data and are seeded in Spanish (`Alimentación`, `Vivienda`, `Transporte`, `Salud`, `Ocio`, `Servicios`, `Otros`). In code, docs and issues the fallback category is still called `Other`; its seeded display name is `Otros`. It is a system category (never deletable or renamable) and is always looked up by its stable id `00000000-0000-0000-0000-000000000001`, never by name. Users never have to provide a category; the agent infers it and falls back to `Other`. Custom categories are v2.
 - Expenses: amount `NUMERIC(19,2)` / `BigDecimal`, explicit currency (ARS). Only amount, description and category are editable; date, source channel and original message are immutable.
 - Only the amount is mandatory to extract; a low-confidence category never triggers a question.

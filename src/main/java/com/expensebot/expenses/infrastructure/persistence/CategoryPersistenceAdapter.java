@@ -18,7 +18,7 @@ public class CategoryPersistenceAdapter implements CategoryRepository {
     public List<Category> findAll() {
         return categoryJpaRepository.findAll()
                 .stream()
-                .map(entity -> new Category(entity.getId(), entity.getName(), entity.isSystem()))
+                .map(entity -> Category.restore(entity.getId(), entity.getName(), entity.isSystem()))
                 .toList();
     }
 }

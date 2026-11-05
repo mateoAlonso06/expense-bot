@@ -1,5 +1,6 @@
 package com.expensebot.expenses.infrastructure.web;
 
+import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.config.SecurityConfig;
 import com.expensebot.expenses.CategoryView;
 import com.expensebot.expenses.ListCategoriesUseCase;
@@ -28,6 +29,9 @@ class CategoryControllerTest {
     private MockMvc mockMvc;
     @MockitoBean
     private ListCategoriesUseCase listCategoriesUseCase;
+    // Required by SecurityConfig, which wires the provisioning filter.
+    @MockitoBean
+    private ProvisionUserProfileUseCase provisionUserProfile;
     // Required by the resource server config; jwt() below bypasses real token decoding.
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -37,7 +41,7 @@ class CategoryControllerTest {
         UUID id = UUID.randomUUID();
         when(listCategoriesUseCase.execute()).thenReturn(List.of(new CategoryView(id, "Alimentación")));
 
-        mockMvc.perform(get("/api/categories").with(jwt()))
+        mockMvc.perform(get("/api/categories").with(jwt().jwt(token -> token.subject(UUID.randomUUID().toString()).claim("email", "ana@example.com"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(id.toString()))
                 .andExpect(jsonPath("$[0].name").value("Alimentación"));

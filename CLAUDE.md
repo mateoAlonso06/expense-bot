@@ -42,6 +42,7 @@ Each module has `domain`, `application`, `infrastructure`.
 ## Development approach
 
 - Outside-in: write the use case (and its test) first; the domain entity grows from what the use case needs. Review invariants after each use case.
+- Domain objects are classes with a private constructor and static factory methods: `create(...)` for a new object (validates invariants, sets defaults) and `restore(...)` to rebuild one already stored (no validation, no side effects). Null checks use `Objects.requireNonNull` (NPE); invalid values throw `IllegalArgumentException`. No records for domain objects.
 - Domain model and persistence model are separate. Audit columns (`created_at`, `updated_at`) belong to persistence, not the domain.
 - Order of work follows the `Depends on` links in the issues. A data-model issue precedes the first table-creating issue.
 

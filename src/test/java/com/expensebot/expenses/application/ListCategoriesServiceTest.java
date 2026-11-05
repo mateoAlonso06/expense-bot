@@ -23,8 +23,8 @@ public class ListCategoriesServiceTest {
 
     @Test
     void returnsAllCategories() {
-        var firstCategory = new Category(UUID.randomUUID(), "Food", false);
-        var secondCategory = new Category(UUID.randomUUID(), "Transport", false);
+        var firstCategory = Category.restore(UUID.randomUUID(), "Food", false);
+        var secondCategory = Category.restore(UUID.randomUUID(), "Transport", false);
 
         when(categoryRepository.findAll()).thenReturn(List.of(
                 firstCategory,

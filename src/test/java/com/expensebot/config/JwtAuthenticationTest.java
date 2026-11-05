@@ -1,5 +1,6 @@
 package com.expensebot.config;
 
+import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.expenses.ListCategoriesUseCase;
 import com.expensebot.expenses.infrastructure.web.CategoryController;
 import com.nimbusds.jose.JOSEException;
@@ -24,7 +25,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class JwtAuthenticationTest {
 
     private static final String ISSUER = "http://localhost:8081/realms/expense-bot";
+    private static final UUID SUBJECT = UUID.randomUUID();
     private static final RSAKey TRUSTED_KEY = generateKey();
     private static final RSAKey UNTRUSTED_KEY = generateKey();
 
@@ -40,6 +44,8 @@ class JwtAuthenticationTest {
     private MockMvc mockMvc;
     @MockitoBean
     private ListCategoriesUseCase listCategoriesUseCase;
+    @MockitoBean
+    private ProvisionUserProfileUseCase provisionUserProfile;
 
     @Test
     void rejectsRequestWithoutToken() throws Exception {
@@ -77,6 +83,8 @@ class JwtAuthenticationTest {
 
         mockMvc.perform(get("/api/categories").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
+
+        verify(provisionUserProfile).execute(SUBJECT, "ana@example.com");
     }
 
     private static RSAKey generateKey() {
@@ -89,7 +97,8 @@ class JwtAuthenticationTest {
 
     private static String sign(RSAKey key, String issuer, Instant expiresAt) throws JOSEException {
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("user-1")
+                .subject(SUBJECT.toString())
+                .claim("email", "ana@example.com")
                 .issuer(issuer)
                 .expirationTime(Date.from(expiresAt))
                 .build();

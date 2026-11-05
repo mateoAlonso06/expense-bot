@@ -25,6 +25,7 @@ spring:
       api-key: ${OPENAI_API_KEY}
 
 telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN:}
   webhook:
     secret-token: ${TELEGRAM_WEBHOOK_SECRET:}
 

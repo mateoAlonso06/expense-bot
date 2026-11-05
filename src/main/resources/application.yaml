@@ -24,6 +24,10 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
 
+telegram:
+  webhook:
+    secret-token: ${TELEGRAM_WEBHOOK_SECRET:}
+
 management:
   endpoints:
     web:

@@ -35,6 +35,7 @@ The graph has no cycles: `channels -> conversation -> {accounts, expenses, budge
 | `budgets` publishes an event instead of sending messages | It does not need to know about chat, identities or channels. `conversation` listens, resolves the user's identity via `accounts` and replies through `ReplySender` (#21) |
 | `expenses` does not depend on `accounts` | It stores `user_id` and checks ownership by that id. The authenticated `sub` comes from the controller, not from another module |
 | REST controllers live in their own module's `infrastructure/web` | The SPA reaches `expenses`, `accounts` and `budgets` directly; only chat goes through `conversation` |
+| Channel adapters group by provider: `channels/infrastructure/telegram/{web,polling}` | Everything that knows Telegram types stays under one package, so "no Telegram type outside the adapter" is one ArchUnit rule. Its webhook is still a controller, in the `web` subpackage |
 
 ## Planned public API per module
 

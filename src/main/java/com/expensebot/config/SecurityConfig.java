@@ -20,6 +20,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        // Telegram has no JWT; the controller checks its shared secret instead.
+                        .requestMatchers("/api/telegram/webhook").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 .addFilterAfter(new UserProvisioningFilter(provisionUserProfile), BearerTokenAuthenticationFilter.class)

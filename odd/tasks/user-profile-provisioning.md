@@ -15,7 +15,7 @@ Create the business `user_profile` on the first authenticated request, keyed by 
 - [x] T1 Flyway `V2`: `user_profile` table (id = `sub`, email, audit columns).
 - [x] T2 Use case `ProvisionUserProfile` + port + unit test with a fake port.
 - [x] T3 Persistence adapter with idempotent insert + Testcontainers test (known sub, unknown sub, concurrent).
-- [ ] T4 Filter that calls the use case after JWT authentication + web test. The filter parses `sub` as UUID; a missing or non-UUID `sub` (or missing email) is rejected with 401 and a clear log, never a 500. Test covers it.
+- [x] T4 Filter that calls the use case after JWT authentication + web test. The filter parses `sub` as UUID; a missing or non-UUID `sub` (or missing email) is rejected with 401 and a clear log, never a 500. Test covers it.
 - [ ] T5 Update docs/diagrams if needed; close issue #4.
 
 ## Acceptance criteria (from #4)

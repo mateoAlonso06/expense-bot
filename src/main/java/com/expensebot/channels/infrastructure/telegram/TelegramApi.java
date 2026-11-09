@@ -57,6 +57,19 @@ public class TelegramApi {
                 }));
     }
 
+    /**
+     * Sends plain text (no {@code parse_mode}, so nothing in the text needs escaping). Telegram accepts 1-4096
+     * characters. The sent message it answers with is not needed.
+     */
+    public void sendMessage(long chatId, String text) {
+        call("sendMessage", () -> restClient.post()
+                .uri("/sendMessage")
+                .body(Map.of("chat_id", chatId, "text", text))
+                .retrieve()
+                .body(new ParameterizedTypeReference<TelegramResponse<Object>>() {
+                }));
+    }
+
     private <T> T call(String method, Supplier<TelegramResponse<T>> request) {
         TelegramResponse<T> response;
         try {

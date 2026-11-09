@@ -93,6 +93,34 @@ class TelegramApiTest {
     }
 
     @Test
+    void sendsPlainTextToTheChat() {
+        server.expect(requestTo(BASE + "/sendMessage"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.chat_id").value(42))
+                .andExpect(jsonPath("$.text").value("Recibido"))
+                .andExpect(jsonPath("$.parse_mode").doesNotExist())
+                .andRespond(withSuccess("""
+                        {"ok": true, "result": {"message_id": 7, "chat": {"id": 42}, "text": "Recibido"}}""",
+                        MediaType.APPLICATION_JSON));
+
+        api.sendMessage(42, "Recibido");
+
+        server.verify();
+    }
+
+    @Test
+    void failsWhenTelegramRejectsTheMessage() {
+        server.expect(requestTo(BASE + "/sendMessage"))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+
+        assertThatThrownBy(() -> api.sendMessage(42, "Recibido"))
+                .isInstanceOf(TelegramApiException.class)
+                .hasMessageContaining("sendMessage")
+                .hasMessageContaining("403")
+                .hasMessageNotContaining("SECRET-TOKEN");
+    }
+
+    @Test
     void doesNotLeakTheBotTokenWhenTheCallFails() {
         server.expect(requestTo(BASE + "/getUpdates?offset=0&timeout=30"))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED));

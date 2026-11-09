@@ -9,6 +9,7 @@ import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -52,6 +53,43 @@ class TelegramApiTest {
                 .andRespond(withSuccess("{\"ok\": false}", MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> api.getUpdates(0, 30)).isInstanceOf(TelegramApiException.class);
+    }
+
+    @Test
+    void registersTheWebhookWithItsSecretToken() {
+        server.expect(requestTo(BASE + "/setWebhook"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.url").value("https://bot.example.com/api/telegram/webhook"))
+                .andExpect(jsonPath("$.secret_token").value("shared-secret"))
+                .andRespond(withSuccess("{\"ok\": true, \"result\": true}", MediaType.APPLICATION_JSON));
+
+        api.setWebhook("https://bot.example.com/api/telegram/webhook", "shared-secret");
+
+        server.verify();
+    }
+
+    @Test
+    void removesTheWebhook() {
+        server.expect(requestTo(BASE + "/deleteWebhook"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"ok\": true, \"result\": true}", MediaType.APPLICATION_JSON));
+
+        api.deleteWebhook();
+
+        server.verify();
+    }
+
+    @Test
+    void failsWhenTelegramRejectsTheWebhook() {
+        server.expect(requestTo(BASE + "/setWebhook"))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        assertThatThrownBy(() -> api.setWebhook("http://insecure.example.com", "shared-secret"))
+                .isInstanceOf(TelegramApiException.class)
+                .hasMessageContaining("setWebhook")
+                .hasMessageContaining("400")
+                .hasMessageNotContaining("SECRET-TOKEN")
+                .hasMessageNotContaining("shared-secret");
     }
 
     @Test

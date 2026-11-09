@@ -13,6 +13,7 @@ Tracker: GitHub issues + project board `bills bot kanban` in `mateoAlonso06/bill
 - Reply in the user's language (Spanish). Code, comments, docs, issues, tests and commits are in English.
 - Conventional commits. Never add `Co-Authored-By` or any AI attribution to commits or PRs.
 - Verify technical claims before stating them; say when something is unverified.
+- Before writing or changing any Java / Spring code, load the `java-springboot` skill. It is a rule, not a judgment call: skipping it for a "small" change is not allowed.
 
 ## Stack
 

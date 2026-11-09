@@ -25,6 +25,8 @@ spring:
       api-key: ${OPENAI_API_KEY}
 
 telegram:
+  # webhook (prod) or polling (dev); polling needs TELEGRAM_BOT_TOKEN
+  mode: ${TELEGRAM_MODE:webhook}
   bot-token: ${TELEGRAM_BOT_TOKEN:}
   webhook:
     secret-token: ${TELEGRAM_WEBHOOK_SECRET:}

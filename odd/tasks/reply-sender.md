@@ -15,7 +15,7 @@ Reply to users through a channel-agnostic outbound port: the domain never sees T
 ## Tasks
 - [x] T1 `TelegramApi.sendMessage(chatId, text)` (POST JSON, plain text, errors never leak the bot token) + test with a mock server.
 - [x] T2 `conversation`: `ReplySender` port (`channel()`, `send(externalUserId, text)`) + `TelegramReplySender` in `channels` (always on, both modes) + test.
-- [ ] T3 `conversation`: internal `ReplyService` picks the sender by channel and logs failures without propagating. Unit tests.
+- [x] T3 `conversation`: internal `ReplyService` picks the sender by channel and logs failures without propagating. Unit tests.
 - [ ] T4 Placeholder: `HandleIncomingMessageService` replies with the fixed text "Recibido" through `ReplyService` (user's request, so the full loop can be tried with the real bot). Temporary: removed when the agent (#10) lands. Includes the first flow test: a `@SpringBootTest` that posts an update to the webhook and checks that a `sendMessage` with "Recibido" goes out (Telegram simulated with `MockRestServiceServer`).
 
 ## Acceptance criteria (from #7)
@@ -28,4 +28,4 @@ Reply to users through a channel-agnostic outbound port: the domain never sees T
 - `sendMessage` text is limited to 1-4096 characters; Telegram allows about one message per second per chat (429 otherwise). Splitting and retry are out of scope.
 
 ## Progress / next step
-Branch `feat/reply-sender` created from `main` (after PR #32). T1 done and committed (`chat_id` is sent as a number, no `parse_mode`). T2 done: `ReplySender` port + `TelegramReplySender` (3 tests). Next: T3.
+Branch `feat/reply-sender` created from `main` (after PR #32). T1 done and committed (`chat_id` is sent as a number, no `parse_mode`). T2 done and committed: `ReplySender` port + `TelegramReplySender`. T3 done: `ReplyService` (5 tests). Next: T4.

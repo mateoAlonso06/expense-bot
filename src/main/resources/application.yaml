@@ -29,6 +29,8 @@ telegram:
   mode: ${TELEGRAM_MODE:webhook}
   bot-token: ${TELEGRAM_BOT_TOKEN:}
   webhook:
+    # public HTTPS base URL of this app (webhook mode only); the endpoint path is appended
+    url: ${TELEGRAM_WEBHOOK_URL:}
     secret-token: ${TELEGRAM_WEBHOOK_SECRET:}
 
 management:

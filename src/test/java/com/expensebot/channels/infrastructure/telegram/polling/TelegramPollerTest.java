@@ -34,6 +34,13 @@ class TelegramPollerTest {
         return new TelegramPoller(telegramApi, new TelegramUpdateMapper(), handleIncomingMessage);
     }
 
+    @Test
+    void removesTheWebhookBeforePolling() {
+        poller().prepare();
+
+        verify(telegramApi).deleteWebhook();
+    }
+
     private static TelegramUpdate textUpdate(long updateId, String text) {
         return new TelegramUpdate(updateId, new TelegramMessage(updateId, new TelegramUser(42), text, null));
     }

@@ -16,7 +16,8 @@ Receive Telegram messages through a channel-agnostic inbound port: the domain ne
 - [x] T3 Webhook endpoint (secret token header) calling the port; security rule so Telegram can reach it without a JWT.
 - [x] T4a `TelegramApi.getUpdates` client (RestClient; errors never leak the bot token in the URL) + test with a mock server.
 - [x] T4b Long polling runner: loop with offset, mapper and port, backoff on errors.
-- [ ] T5 Configuration to choose polling or webhook (registers/removes the webhook on startup); ArchUnit rule: no Telegram types outside the adapter package.
+- [x] T5a `TelegramApi.setWebhook` / `deleteWebhook` (secret in the JSON body, errors never leak tokens).
+- [x] T5b Mode selection: webhook controller + registrar only with `telegram.mode=webhook` (default); polling removes the webhook before its first round; ArchUnit rule. Config: `telegram.webhook.url` (`TELEGRAM_WEBHOOK_URL`).
 - [ ] T6 Update docs; close issue #6.
 
 ## Acceptance criteria (from #6)

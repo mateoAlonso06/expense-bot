@@ -45,8 +45,13 @@ public class TelegramPollingRunner implements SmartLifecycle {
 
     private void loop() {
         long offset = 0;
+        boolean prepared = false;
         while (running) {
             try {
+                if (!prepared) {
+                    poller.prepare();
+                    prepared = true;
+                }
                 offset = poller.poll(offset);
             } catch (RuntimeException e) {
                 if (!running) {

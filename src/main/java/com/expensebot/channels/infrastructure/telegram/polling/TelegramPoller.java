@@ -25,6 +25,11 @@ public class TelegramPoller {
         this.handleIncomingMessage = handleIncomingMessage;
     }
 
+    /** Telegram refuses {@code getUpdates} while a webhook is set, so it is removed before the first round. */
+    public void prepare() {
+        telegramApi.deleteWebhook();
+    }
+
     /** Returns the offset for the next round: the highest update id seen plus one. */
     public long poll(long offset) {
         long nextOffset = offset;

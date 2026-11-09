@@ -32,6 +32,13 @@ class ArchitectureTest {
             .allowEmptyShould(true);
 
     @ArchTest
+    static final ArchRule telegram_types_stay_in_the_telegram_adapter = noClasses()
+            .that().resideOutsideOfPackage("com.expensebot.channels.infrastructure.telegram..")
+            .should().dependOnClassesThat().resideInAPackage("com.expensebot.channels.infrastructure.telegram..")
+            .allowEmptyShould(true)
+            .because("the rest of the application must not know Telegram types");
+
+    @ArchTest
     static void modules_only_use_the_public_api_of_other_modules(com.tngtech.archunit.core.domain.JavaClasses classes) {
         for (String module : MODULES) {
             for (String other : MODULES) {

@@ -4,6 +4,7 @@ import com.expensebot.channels.infrastructure.telegram.TelegramUpdate;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.conversation.HandleIncomingMessageUseCase;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,8 +17,10 @@ import java.security.MessageDigest;
 
 /** Receives Telegram updates in production. Telegram has no JWT, so it authenticates with a shared secret. */
 @RestController
-@RequestMapping("/api/telegram/webhook")
+@ConditionalOnProperty(name = "telegram.mode", havingValue = "webhook", matchIfMissing = true)
+@RequestMapping(TelegramWebhookController.PATH)
 public class TelegramWebhookController {
+    static final String PATH = "/api/telegram/webhook";
     static final String SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token";
 
     private final TelegramUpdateMapper mapper;

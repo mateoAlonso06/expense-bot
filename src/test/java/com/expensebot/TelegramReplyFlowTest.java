@@ -23,6 +23,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,8 +40,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 class TelegramReplyFlowTest {
-    private static final String UPDATE = """
-            {"update_id": 100, "message": {"message_id": 1, "from": {"id": 42}, "text": "hola"}}""";
+    // Each post needs its own update id: the database keeps the ones already seen, and a repeated
+    // id would be dropped as a duplicate.
+    private static final AtomicLong UPDATE_IDS = new AtomicLong(System.nanoTime());
 
     private static final BlockingQueue<CapturedRequest> REQUESTS = new LinkedBlockingQueue<>();
     private static final AtomicInteger TELEGRAM_STATUS = new AtomicInteger(200);
@@ -90,7 +92,9 @@ class TelegramReplyFlowTest {
         mockMvc.perform(post("/api/telegram/webhook")
                         .header("X-Telegram-Bot-Api-Secret-Token", "flow-secret")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(UPDATE))
+                        .content("""
+                                {"update_id": %d, "message": {"message_id": 1, "from": {"id": 42}, "text": "hola"}}"""
+                                .formatted(UPDATE_IDS.incrementAndGet())))
                 .andExpect(status().isOk());
     }
 

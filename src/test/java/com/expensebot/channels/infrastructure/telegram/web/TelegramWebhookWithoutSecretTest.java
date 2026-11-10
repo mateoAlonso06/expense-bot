@@ -3,7 +3,7 @@ package com.expensebot.channels.infrastructure.telegram.web;
 import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.config.SecurityConfig;
-import com.expensebot.conversation.HandleIncomingMessageUseCase;
+import com.expensebot.channels.application.IncomingMessageGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -25,7 +25,7 @@ class TelegramWebhookWithoutSecretTest {
     @Autowired
     private MockMvc mockMvc;
     @MockitoBean
-    private HandleIncomingMessageUseCase handleIncomingMessage;
+    private IncomingMessageGateway gateway;
     @MockitoBean
     private ProvisionUserProfileUseCase provisionUserProfile;
     @MockitoBean
@@ -39,6 +39,6 @@ class TelegramWebhookWithoutSecretTest {
                         .content("{\"update_id\": 1}"))
                 .andExpect(status().isUnauthorized());
 
-        verifyNoInteractions(handleIncomingMessage);
+        verifyNoInteractions(gateway);
     }
 }

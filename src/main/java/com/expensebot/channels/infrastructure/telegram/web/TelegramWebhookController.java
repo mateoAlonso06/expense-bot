@@ -2,7 +2,7 @@ package com.expensebot.channels.infrastructure.telegram.web;
 
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdate;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
-import com.expensebot.conversation.HandleIncomingMessageUseCase;
+import com.expensebot.channels.application.IncomingMessageGateway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
@@ -24,14 +24,14 @@ public class TelegramWebhookController {
     static final String SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token";
 
     private final TelegramUpdateMapper mapper;
-    private final HandleIncomingMessageUseCase handleIncomingMessage;
+    private final IncomingMessageGateway gateway;
     private final String secretToken;
 
     public TelegramWebhookController(TelegramUpdateMapper mapper,
-                                     HandleIncomingMessageUseCase handleIncomingMessage,
+                                     IncomingMessageGateway gateway,
                                      @Value("${telegram.webhook.secret-token:}") String secretToken) {
         this.mapper = mapper;
-        this.handleIncomingMessage = handleIncomingMessage;
+        this.gateway = gateway;
         this.secretToken = secretToken;
     }
 
@@ -41,7 +41,7 @@ public class TelegramWebhookController {
         if (!isValid(receivedToken)) {
             return ResponseEntity.status(401).build();
         }
-        mapper.toIncomingMessage(update).ifPresent(handleIncomingMessage::execute);
+        mapper.toIncomingMessage(update).ifPresent(gateway::receive);
         // Always 200 for an authentic update, even one we ignore, so Telegram stops redelivering it.
         return ResponseEntity.ok().build();
     }

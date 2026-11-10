@@ -3,7 +3,7 @@ package com.expensebot.channels.infrastructure.telegram.polling;
 import com.expensebot.channels.infrastructure.telegram.TelegramApi;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdate;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
-import com.expensebot.conversation.HandleIncomingMessageUseCase;
+import com.expensebot.channels.application.IncomingMessageGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,14 +15,14 @@ public class TelegramPoller {
 
     private final TelegramApi telegramApi;
     private final TelegramUpdateMapper mapper;
-    private final HandleIncomingMessageUseCase handleIncomingMessage;
+    private final IncomingMessageGateway gateway;
 
     public TelegramPoller(TelegramApi telegramApi,
                           TelegramUpdateMapper mapper,
-                          HandleIncomingMessageUseCase handleIncomingMessage) {
+                          IncomingMessageGateway gateway) {
         this.telegramApi = telegramApi;
         this.mapper = mapper;
-        this.handleIncomingMessage = handleIncomingMessage;
+        this.gateway = gateway;
     }
 
     /** Telegram refuses {@code getUpdates} while a webhook is set, so it is removed before the first round. */
@@ -46,7 +46,7 @@ public class TelegramPoller {
      */
     private void handle(TelegramUpdate update) {
         try {
-            mapper.toIncomingMessage(update).ifPresent(handleIncomingMessage::execute);
+            mapper.toIncomingMessage(update).ifPresent(gateway::receive);
         } catch (RuntimeException e) {
             log.error("Failed to handle Telegram update {}", update.updateId(), e);
         }

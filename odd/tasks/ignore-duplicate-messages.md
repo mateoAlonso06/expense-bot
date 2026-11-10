@@ -21,7 +21,7 @@ Process each incoming message once: the same `(channel, eventId)` delivered twic
 ## Tasks
 - [x] T1 Migration `V3__create_processed_message_table.sql` + `ProcessedMessageRepository` port + JDBC adapter + `@DataJpaTest` with Testcontainers (first registration, repeated registration, same event id on another channel, concurrent registrations: exactly one wins).
 - [x] T2 `IncomingMessageGateway` + unit tests; webhook controller and poller use it (their tests are updated).
-- [ ] T3 Flow test: the same update posted twice to the webhook gets two 200 and one "Recibido" reply. Docs updated (modules diagram, README if it mentions the flow).
+- [x] T3 Flow test: the same update posted twice to the webhook gets two 200 and one "Recibido" reply. Docs updated (modules diagram, README if it mentions the flow).
 
 ## Acceptance criteria (from #8)
 - The same `(channel, eventId)` delivered twice is processed once.
@@ -33,4 +33,4 @@ Process each incoming message once: the same `(channel, eventId)` delivered twic
 - Rows are never purged. Fine at this scale; a retention job is out of scope.
 
 ## Progress / next step
-Branch `feat/ignore-duplicate-messages` created from `main` (after PR #33). T1 done and committed (`9ec720f`): migration V3, `ProcessedMessageRepository` port, `ProcessedMessagePersistenceAdapter` (JdbcClient) and its test (4 tests incl. 8 concurrent deliveries: exactly one wins). T2 done, not committed: `IncomingMessageGateway` (3 unit tests); `TelegramWebhookController` and `TelegramPoller` call it instead of the use case; their tests mock the gateway; `TelegramReplyFlowTest` now uses a distinct `update_id` per post (the real database remembers the ids it has seen). Full suite: 90 tests, 0 failures. Next: user review of T2, then T3.
+Branch `feat/ignore-duplicate-messages` created from `main` (after PR #33). T1 done and committed (`9ec720f`): migration V3, `ProcessedMessageRepository` port, `ProcessedMessagePersistenceAdapter` (JdbcClient) and its test (4 tests incl. 8 concurrent deliveries: exactly one wins). T2 done and committed (`d535be8`): `IncomingMessageGateway` (3 unit tests); `TelegramWebhookController` and `TelegramPoller` call it instead of the use case; their tests mock the gateway; `TelegramReplyFlowTest` uses a distinct `update_id` per post (the real database remembers the ids it has seen). T3 done, not committed: flow test (same update twice: both 200, one reply), docs (modules note 7, stale sentence removed from the ER notes). Full suite: 91 tests, 0 failures. Next: user review of T3, then PR with `Closes #8`.

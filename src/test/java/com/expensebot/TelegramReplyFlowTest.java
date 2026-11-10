@@ -88,13 +88,28 @@ class TelegramReplyFlowTest {
         assertThat(REQUESTS.poll(2, TimeUnit.SECONDS)).isNotNull();
     }
 
+    @Test
+    void theSameUpdateDeliveredTwiceIsAnsweredOnceAndBothDeliveriesGetOk() throws Exception {
+        long updateId = UPDATE_IDS.incrementAndGet();
+
+        postUpdate(updateId);
+        postUpdate(updateId); // postUpdate expects 200, so the duplicate is acknowledged too
+
+        // The webhook is synchronous: once both calls return, every reply that will ever be sent already was.
+        assertThat(REQUESTS).hasSize(1);
+    }
+
     private void postUpdate() throws Exception {
+        postUpdate(UPDATE_IDS.incrementAndGet());
+    }
+
+    private void postUpdate(long updateId) throws Exception {
         mockMvc.perform(post("/api/telegram/webhook")
                         .header("X-Telegram-Bot-Api-Secret-Token", "flow-secret")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"update_id": %d, "message": {"message_id": 1, "from": {"id": 42}, "text": "hola"}}"""
-                                .formatted(UPDATE_IDS.incrementAndGet())))
+                                .formatted(updateId)))
                 .andExpect(status().isOk());
     }
 

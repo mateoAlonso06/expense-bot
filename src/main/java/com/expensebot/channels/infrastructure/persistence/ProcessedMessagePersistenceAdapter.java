@@ -1,7 +1,7 @@
 package com.expensebot.channels.infrastructure.persistence;
 
 import com.expensebot.channels.application.ProcessedMessageRepository;
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 

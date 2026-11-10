@@ -1,6 +1,6 @@
 package com.expensebot.conversation.application;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.conversation.ReplySender;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

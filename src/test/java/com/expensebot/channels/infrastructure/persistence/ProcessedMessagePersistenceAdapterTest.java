@@ -1,6 +1,6 @@
 package com.expensebot.channels.infrastructure.persistence;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

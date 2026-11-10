@@ -1,6 +1,6 @@
 package com.expensebot.conversation.application;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.conversation.ReplySender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

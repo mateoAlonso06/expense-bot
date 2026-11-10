@@ -1,6 +1,6 @@
 package com.expensebot.channels.application;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.conversation.HandleIncomingMessageUseCase;
 import com.expensebot.conversation.IncomingMessage;
 import org.junit.jupiter.api.Test;

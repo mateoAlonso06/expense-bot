@@ -1,5 +1,6 @@
 package com.expensebot.conversation;
 
+import com.expensebot.accounts.Channel;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

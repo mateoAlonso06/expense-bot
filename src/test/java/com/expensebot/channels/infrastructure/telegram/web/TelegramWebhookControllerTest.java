@@ -3,7 +3,7 @@ package com.expensebot.channels.infrastructure.telegram.web;
 import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.config.SecurityConfig;
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.channels.application.IncomingMessageGateway;
 import com.expensebot.conversation.IncomingMessage;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,6 @@
 package com.expensebot.channels.infrastructure.telegram;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 

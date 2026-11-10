@@ -24,6 +24,11 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
 
+accounts:
+  link-code:
+    # how long a link code stays valid
+    ttl: 10m
+
 telegram:
   # webhook (prod) or polling (dev); polling needs TELEGRAM_BOT_TOKEN
   mode: ${TELEGRAM_MODE:webhook}

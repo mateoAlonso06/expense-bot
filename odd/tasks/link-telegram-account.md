@@ -23,7 +23,7 @@ An authenticated web user requests a single-use, short-lived code, sends it to t
 
 ## Tasks
 - [x] T1 Move `Channel` to `com.expensebot.accounts` (imports only, no behavior change). `ArchitectureTest` and the full suite stay green.
-- [ ] T2 Request side: migration `link_code`, domain `LinkCode`, persistence, `RequestLinkCodeUseCase` service (generation, hashing, TTL as a property) + tests.
+- [x] T2 Request side: migration `link_code`, domain `LinkCode`, persistence, `RequestLinkCodeUseCase` service (generation, hashing, TTL as a property) + tests.
 - [ ] T3 `POST /api/link-codes` controller + `@WebMvcTest` (authenticated 201, unauthenticated 401).
 - [ ] T4 Link side: migration `channel_identity`, domain `ChannelIdentity`, persistence, `LinkChannelIdentityUseCase` service (atomic consume + create in one transaction) + tests (valid, expired, used twice, identity taken, user already linked, concurrent consumption).
 - [ ] T5 `conversation` recognizes the code and replies per result; flow test (webhook -> link -> reply); docs.
@@ -42,4 +42,4 @@ An authenticated web user requests a single-use, short-lived code, sends it to t
 - Expired and used rows are never purged.
 
 ## Progress / next step
-Branch `feat/link-telegram-account` created from `main` (after PR #34). The docs fix for the ER notes is committed (`6e4f7fa`). T1 done, not committed: `Channel` moved to `com.expensebot.accounts` (`git mv`, 12 files updated plus 3 that now import it explicitly); full suite 91 tests, 0 failures, `ArchitectureTest` green. Next: user review of T1, then T2.
+Branch `feat/link-telegram-account` created from `main` (after PR #34). The docs fix for the ER notes is committed (`6e4f7fa`). T1 done and committed (`95f216c`): `Channel` moved to `com.expensebot.accounts`. T2 done, not committed: migration V4 (`link_code`), `LinkCode` domain (only `create`; `restore` when the link side needs it), `LinkCodeRepository` port + `LinkCodePersistenceAdapter` on `JdbcClient` (no JPA entity, same choice as `processed_message`, since consuming a code will be one atomic UPDATE), `LinkCodeFormat` (generation, normalization, SHA-256; package-private, reused by T4), `RequestLinkCodeService`, public `RequestLinkCodeUseCase` + `IssuedLinkCode`, `ClockConfig` bean, `accounts.link-code.ttl: 10m`. Full suite: 103 tests, 0 failures. Note for T4/T5: `conversation` cannot see `LinkCodeFormat`, so recognizing "this message looks like a code" must be exposed by the accounts public API (e.g. a `NOT_A_CODE` result of `LinkChannelIdentityUseCase`). Next: user review of T2, then T3.

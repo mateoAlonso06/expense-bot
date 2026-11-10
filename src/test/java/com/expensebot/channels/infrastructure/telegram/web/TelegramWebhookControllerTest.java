@@ -4,7 +4,7 @@ import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.config.SecurityConfig;
 import com.expensebot.conversation.Channel;
-import com.expensebot.conversation.HandleIncomingMessageUseCase;
+import com.expensebot.channels.application.IncomingMessageGateway;
 import com.expensebot.conversation.IncomingMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,7 +32,7 @@ class TelegramWebhookControllerTest {
     @Autowired
     private MockMvc mockMvc;
     @MockitoBean
-    private HandleIncomingMessageUseCase handleIncomingMessage;
+    private IncomingMessageGateway gateway;
     // Required by SecurityConfig.
     @MockitoBean
     private ProvisionUserProfileUseCase provisionUserProfile;
@@ -48,7 +48,7 @@ class TelegramWebhookControllerTest {
                 .andExpect(status().isOk());
 
         var captor = ArgumentCaptor.forClass(IncomingMessage.class);
-        verify(handleIncomingMessage).execute(captor.capture());
+        verify(gateway).receive(captor.capture());
         assertThat(captor.getValue().channel()).isEqualTo(Channel.TELEGRAM);
         assertThat(captor.getValue().externalUserId()).isEqualTo("42");
         assertThat(captor.getValue().text()).isEqualTo("gaste 500");
@@ -62,7 +62,7 @@ class TelegramWebhookControllerTest {
                         .content(TEXT_UPDATE))
                 .andExpect(status().isUnauthorized());
 
-        verifyNoInteractions(handleIncomingMessage);
+        verifyNoInteractions(gateway);
     }
 
     @Test
@@ -70,7 +70,7 @@ class TelegramWebhookControllerTest {
         mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(TEXT_UPDATE))
                 .andExpect(status().isUnauthorized());
 
-        verifyNoInteractions(handleIncomingMessage);
+        verifyNoInteractions(gateway);
     }
 
     @Test
@@ -81,6 +81,6 @@ class TelegramWebhookControllerTest {
                         .content("{\"update_id\": 9002, \"edited_message\": {\"message_id\": 5}}"))
                 .andExpect(status().isOk());
 
-        verifyNoInteractions(handleIncomingMessage);
+        verifyNoInteractions(gateway);
     }
 }

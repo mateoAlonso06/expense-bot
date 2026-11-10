@@ -5,7 +5,7 @@ import com.expensebot.channels.infrastructure.telegram.TelegramUpdate;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdate.TelegramMessage;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdate.TelegramUser;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
-import com.expensebot.conversation.HandleIncomingMessageUseCase;
+import com.expensebot.channels.application.IncomingMessageGateway;
 import com.expensebot.conversation.IncomingMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,10 +28,10 @@ class TelegramPollerTest {
     @Mock
     private TelegramApi telegramApi;
     @Mock
-    private HandleIncomingMessageUseCase handleIncomingMessage;
+    private IncomingMessageGateway gateway;
 
     private TelegramPoller poller() {
-        return new TelegramPoller(telegramApi, new TelegramUpdateMapper(), handleIncomingMessage);
+        return new TelegramPoller(telegramApi, new TelegramUpdateMapper(), gateway);
     }
 
     @Test
@@ -53,7 +53,7 @@ class TelegramPollerTest {
         long next = poller().poll(10);
 
         var captor = ArgumentCaptor.forClass(IncomingMessage.class);
-        verify(handleIncomingMessage, times(2)).execute(captor.capture());
+        verify(gateway, times(2)).receive(captor.capture());
         assertThat(captor.getAllValues()).extracting(IncomingMessage::text).containsExactly("uno", "dos");
         assertThat(next).isEqualTo(12);
     }
@@ -63,7 +63,7 @@ class TelegramPollerTest {
         when(telegramApi.getUpdates(10, TelegramPoller.TIMEOUT_SECONDS)).thenReturn(List.of());
 
         assertThat(poller().poll(10)).isEqualTo(10);
-        verifyNoInteractions(handleIncomingMessage);
+        verifyNoInteractions(gateway);
     }
 
     @Test
@@ -72,19 +72,19 @@ class TelegramPollerTest {
         when(telegramApi.getUpdates(0, TelegramPoller.TIMEOUT_SECONDS)).thenReturn(List.of(sticker));
 
         assertThat(poller().poll(0)).isEqualTo(21);
-        verifyNoInteractions(handleIncomingMessage);
+        verifyNoInteractions(gateway);
     }
 
     @Test
     void aFailingMessageDoesNotBlockTheOnesBehindIt() {
         when(telegramApi.getUpdates(0, TelegramPoller.TIMEOUT_SECONDS))
                 .thenReturn(List.of(textUpdate(1, "falla"), textUpdate(2, "ok")));
-        doThrow(new IllegalStateException("boom")).when(handleIncomingMessage)
-                .execute(any(IncomingMessage.class));
+        doThrow(new IllegalStateException("boom")).when(gateway)
+                .receive(any(IncomingMessage.class));
 
         long next = poller().poll(0);
 
-        verify(handleIncomingMessage, times(2)).execute(any(IncomingMessage.class));
+        verify(gateway, times(2)).receive(any(IncomingMessage.class));
         assertThat(next).isEqualTo(3);
     }
 }

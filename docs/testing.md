@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **103 tests**, run with `./mvnw test` (JDK 21). Nothing is tagged yet, so today there is a single suite: everything.
+Current state: **103 tests**, run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -53,23 +53,25 @@ Support classes (not tests): `TestcontainersConfiguration`, `TestExpenseBotAppli
 - Flow tests replace only what is outside the system (Telegram), never the application's own beans.
 - Every new feature adds tests at the lowest category that can prove it; a flow test is added only for a scenario that crosses modules.
 
-## Proposal: suites for CI (not implemented yet)
+## Suites
 
 Goal: protect the application on every change without making every push wait for Docker.
 
-| Suite | Categories | When | Cost |
-|---|---|---|---|
-| `fast` | 1, 2, 3, 4, 6 (87 tests) | every push | seconds, no Docker |
-| `integration` | 5, 7, 8 (16 tests) | every pull request | slower, needs Docker |
-| `all` | everything | before merging to `main` | sum of both |
+| Suite | Categories | Tests | Command | Intended use |
+|---|---|---|---|---|
+| `fast` | 1, 2, 3, 4, 6 | 87 | `./mvnw test -Pfast` | every push; seconds, no Docker |
+| `integration` | 5, 7, 8 | 16 | `./mvnw test -Pintegration` | every pull request; needs Docker |
+| all | everything | 103 | `./mvnw test` | before merging to `main` |
 
 Category 6 (architecture) sits in `fast` on purpose: it is cheap and it is the test that stops a broken dependency from reaching the PR.
 
-**Mechanism.** JUnit 5 `@Tag("unit")`, `@Tag("web")`, `@Tag("persistence")`, ... on each class, and Maven Surefire selecting by tag (`./mvnw test -Dgroups=fast`). Tags map one to one to the categories above and need no extra plugin. The alternative is the Maven convention of naming slow tests `*IT` and running them with Failsafe (`./mvnw verify`); it separates suites by file name instead of by tag, and needs a second plugin.
+**Tags.** Each class has one `@Tag` from this list: `unit`, `mocks`, `http-client`, `web`, `persistence`, `flow`, `smoke` (category 6 is the exception, see below). A single category can also be run with `./mvnw test -Dgroups=web`.
 
-Both options were not tried in this project yet; the Surefire tag filter should be verified when it is implemented.
+**Two things worth knowing.**
+- `fast` is defined as "everything except `persistence`, `flow` and `smoke`" (`excludedGroups` in the `pom.xml`), not as a list of fast tags. ArchUnit runs on its own JUnit engine, and a tag filter (`groups`) drops it: this was verified, a first version listing the fast tags ran 82 tests instead of 87. `ArchitectureTest` therefore has no tag.
+- A new test class that forgets its tag lands in `fast`. If it is a slow one that needs Docker, it fails there and the omission shows up. Always tag a new class with its category.
 
-**Pipeline sketch (GitHub Actions).** One job runs the `fast` suite on every push; a second job runs `integration` on pull requests. GitHub-hosted Ubuntu runners usually have Docker available, which Testcontainers needs (to verify when the workflow is written). The job installs JDK 21.
+**Pipeline sketch (GitHub Actions, not written yet).** One job runs `-Pfast` on every push; a second job runs `-Pintegration` on pull requests. The job installs JDK 21. GitHub-hosted Ubuntu runners usually have Docker, which Testcontainers needs (to verify when the workflow is written).
 
 ## Known gaps
 

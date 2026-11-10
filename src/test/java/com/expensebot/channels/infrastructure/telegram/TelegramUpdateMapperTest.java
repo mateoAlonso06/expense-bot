@@ -1,11 +1,13 @@
 package com.expensebot.channels.infrastructure.telegram;
 
 import com.expensebot.accounts.Channel;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("unit")
 class TelegramUpdateMapperTest {
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
     private final TelegramUpdateMapper mapper = new TelegramUpdateMapper();

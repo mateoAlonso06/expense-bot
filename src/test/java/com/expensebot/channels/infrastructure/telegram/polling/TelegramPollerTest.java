@@ -7,6 +7,7 @@ import com.expensebot.channels.infrastructure.telegram.TelegramUpdate.TelegramUs
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.channels.application.IncomingMessageGateway;
 import com.expensebot.conversation.IncomingMessage;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class TelegramPollerTest {
     @Mock
     private TelegramApi telegramApi;

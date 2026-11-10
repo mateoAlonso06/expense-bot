@@ -2,6 +2,7 @@ package com.expensebot.accounts.infrastructure.persistence;
 
 import com.expensebot.accounts.domain.LinkCode;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(LinkCodePersistenceAdapter.class)
+@Tag("persistence")
 class LinkCodePersistenceAdapterTest {
     private static final Instant EXPIRY = Instant.parse("2026-11-10T12:00:00Z");
 

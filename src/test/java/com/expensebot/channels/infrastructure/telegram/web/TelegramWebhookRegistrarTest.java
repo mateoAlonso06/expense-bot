@@ -2,6 +2,7 @@ package com.expensebot.channels.infrastructure.telegram.web;
 
 import com.expensebot.channels.infrastructure.telegram.TelegramApi;
 import com.expensebot.channels.infrastructure.telegram.TelegramApiException;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class TelegramWebhookRegistrarTest {
     @Mock
     private TelegramApi telegramApi;

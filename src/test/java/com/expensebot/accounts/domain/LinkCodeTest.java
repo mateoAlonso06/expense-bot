@@ -1,5 +1,6 @@
 package com.expensebot.accounts.domain;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -8,6 +9,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Tag("unit")
 class LinkCodeTest {
     private static final UUID USER = UUID.randomUUID();
     private static final Instant EXPIRY = Instant.parse("2026-11-10T12:00:00Z");

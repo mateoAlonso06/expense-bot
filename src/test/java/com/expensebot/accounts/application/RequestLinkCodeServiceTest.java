@@ -2,6 +2,7 @@ package com.expensebot.accounts.application;
 
 import com.expensebot.accounts.IssuedLinkCode;
 import com.expensebot.accounts.domain.LinkCode;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class RequestLinkCodeServiceTest {
     private static final Instant NOW = Instant.parse("2026-11-10T12:00:00Z");
 

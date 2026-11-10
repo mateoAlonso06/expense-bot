@@ -1,6 +1,7 @@
 package com.expensebot.expenses.infrastructure.persistence;
 
 import com.expensebot.expenses.domain.Category;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(CategoryPersistenceAdapter.class)
+@Tag("persistence")
 class CategoryPersistenceAdapterTest {
 
     @Container

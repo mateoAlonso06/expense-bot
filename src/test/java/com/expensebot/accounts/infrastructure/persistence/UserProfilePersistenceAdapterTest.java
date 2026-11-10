@@ -1,6 +1,7 @@
 package com.expensebot.accounts.infrastructure.persistence;
 
 import com.expensebot.accounts.domain.UserProfile;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(UserProfilePersistenceAdapter.class)
+@Tag("persistence")
 class UserProfilePersistenceAdapterTest {
 
     @Container

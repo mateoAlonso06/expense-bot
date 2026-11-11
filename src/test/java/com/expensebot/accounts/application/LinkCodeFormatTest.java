@@ -29,6 +29,14 @@ class LinkCodeFormatTest {
         assertThat(LinkCodeFormat.normalize("  k7m4-9qxt \n")).isEqualTo("K7M49QXT");
     }
 
+    // The expected value comes from outside this code: printf %s K7M49QXT | sha256sum. Computing it with
+    // LinkCodeFormat.hash itself would make the test pass even if hash returned the wrong thing.
+    @Test
+    void hashesTheNormalizedCodeWithSha256() {
+        assertThat(LinkCodeFormat.hash("k7m4-9qxt"))
+                .isEqualTo("ec52424e5226ea952f596ee33a7c71c99db0a1c38596e4ac4edbd591b1b85ffc");
+    }
+
     @Test
     void hashesEveryWayOfTypingTheSameCodeToTheSameValue() {
         String hash = LinkCodeFormat.hash("K7M4-9QXT");

@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **103 tests**, run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **104 tests**, run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -21,7 +21,7 @@ Current state: **103 tests**, run with `./mvnw test` (JDK 21). Every test class 
 
 | # | Category | Tests | What it proves | Uses | Needs Docker |
 |---|---|---|---|---|---|
-| 1 | Domain / pure unit | 24 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
+| 1 | Domain / pure unit | 25 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
 | 2 | Unit with mocks | 33 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
 | 3 | HTTP client | 9 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
 | 4 | Web slice | 16 | Controllers, security rules (JWT, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
@@ -30,7 +30,7 @@ Current state: **103 tests**, run with `./mvnw test` (JDK 21). Every test class 
 | 7 | Flow | 3 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
 | 8 | Smoke | 1 | The application context starts with all beans wired | `@SpringBootTest`, Testcontainers | **Yes** |
 
-87 tests run without Docker; 16 need it.
+88 tests run without Docker; 16 need it.
 
 ## Where each test lives
 
@@ -59,16 +59,16 @@ Goal: protect the application on every change without making every push wait for
 
 | Suite | Categories | Tests | Command | Intended use |
 |---|---|---|---|---|
-| `fast` | 1, 2, 3, 4, 6 | 87 | `./mvnw test -Pfast` | every push; seconds, no Docker |
+| `fast` | 1, 2, 3, 4, 6 | 88 | `./mvnw test -Pfast` | every push; seconds, no Docker |
 | `integration` | 5, 7, 8 | 16 | `./mvnw test -Pintegration` | every pull request; needs Docker |
-| all | everything | 103 | `./mvnw test` | before merging to `main` |
+| all | everything | 104 | `./mvnw test` | before merging to `main` |
 
 Category 6 (architecture) sits in `fast` on purpose: it is cheap and it is the test that stops a broken dependency from reaching the PR.
 
 **Tags.** Each class has one `@Tag` from this list: `unit`, `mocks`, `http-client`, `web`, `persistence`, `flow`, `smoke` (category 6 is the exception, see below). A single category can also be run with `./mvnw test -Dgroups=web`.
 
 **Two things worth knowing.**
-- `fast` is defined as "everything except `persistence`, `flow` and `smoke`" (`excludedGroups` in the `pom.xml`), not as a list of fast tags. ArchUnit runs on its own JUnit engine, and a tag filter (`groups`) drops it: this was verified, a first version listing the fast tags ran 82 tests instead of 87. `ArchitectureTest` therefore has no tag.
+- `fast` is defined as "everything except `persistence`, `flow` and `smoke`" (`excludedGroups` in the `pom.xml`), not as a list of fast tags. ArchUnit runs on its own JUnit engine, and a tag filter (`groups`) drops it: this was verified, a first version listing the fast tags skipped the 5 ArchUnit tests. `ArchitectureTest` therefore has no tag.
 - A new test class that forgets its tag lands in `fast`. If it is a slow one that needs Docker, it fails there and the omission shows up. Always tag a new class with its category.
 
 **Pipeline sketch (GitHub Actions, not written yet).** One job runs `-Pfast` on every push; a second job runs `-Pintegration` on pull requests. The job installs JDK 21. GitHub-hosted Ubuntu runners usually have Docker, which Testcontainers needs (to verify when the workflow is written).

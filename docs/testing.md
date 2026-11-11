@@ -59,9 +59,9 @@ Goal: protect the application on every change without making every push wait for
 
 | Suite | Categories | Tests | Command | Intended use |
 |---|---|---|---|---|
-| `fast` | 1, 2, 3, 4, 6 | 94 | `./mvnw test -Pfast` | every push; seconds, no Docker |
-| `integration` | 5, 7, 8 | 22 | `./mvnw test -Pintegration` | every pull request; needs Docker |
-| all | everything | 116 | `./mvnw test` | before merging to `main` |
+| `fast` | 1, 2, 3, 4, 6 | 94 | `./mvnw test -Pfast` | locally before every push; CI job; seconds, no Docker |
+| `integration` | 5, 7, 8 | 22 | `./mvnw test -Pintegration` | CI job; needs Docker |
+| all | everything | 116 | `./mvnw test` | locally when a change touches persistence or flows |
 
 Category 6 (architecture) sits in `fast` on purpose: it is cheap and it is the test that stops a broken dependency from reaching the PR.
 
@@ -71,7 +71,7 @@ Category 6 (architecture) sits in `fast` on purpose: it is cheap and it is the t
 - `fast` is defined as "everything except `persistence`, `flow` and `smoke`" (`excludedGroups` in the `pom.xml`), not as a list of fast tags. ArchUnit runs on its own JUnit engine, and a tag filter (`groups`) drops it: this was verified, a first version listing the fast tags skipped the 5 ArchUnit tests. `ArchitectureTest` therefore has no tag.
 - A new test class that forgets its tag lands in `fast`. If it is a slow one that needs Docker, it fails there and the omission shows up. Always tag a new class with its category.
 
-**Pipeline sketch (GitHub Actions, not written yet).** One job runs `-Pfast` on every push; a second job runs `-Pintegration` on pull requests. The job installs JDK 21. GitHub-hosted Ubuntu runners usually have Docker, which Testcontainers needs (to verify when the workflow is written).
+**CI (GitHub Actions).** `.github/workflows/ci.yml` runs on every pull request to `main` and on every push to `main`. It has two parallel jobs, `fast` and `integration`, which together run every test. Both install Temurin JDK 21 and cache the Maven repository. The `integration` job relies on the Docker engine preinstalled on GitHub's `ubuntu-latest` runners for Testcontainers. When a job fails, its Surefire reports are uploaded as a workflow artifact (kept 7 days). Pushes to feature branches without a pull request do not trigger CI: run `-Pfast` locally before pushing.
 
 ## Known gaps
 

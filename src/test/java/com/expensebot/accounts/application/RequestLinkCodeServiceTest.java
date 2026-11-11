@@ -31,10 +31,16 @@ class RequestLinkCodeServiceTest {
     }
 
     @Test
-    void issuesACodeThatExpiresAfterTheTtl() {
+    void issuesACodeInTheFormatTheUserTypes() {
         IssuedLinkCode issued = service().execute(UUID.randomUUID());
 
         assertThat(issued.code()).matches("[A-Z2-9]{4}-[A-Z2-9]{4}");
+    }
+
+    @Test
+    void issuesACodeThatExpiresAfterTheTtl() {
+        IssuedLinkCode issued = service().execute(UUID.randomUUID());
+
         assertThat(issued.expiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(10)));
     }
 

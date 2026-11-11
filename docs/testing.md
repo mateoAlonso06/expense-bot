@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **104 tests**, run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **105 tests**, run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -22,7 +22,7 @@ Current state: **104 tests**, run with `./mvnw test` (JDK 21). Every test class 
 | # | Category | Tests | What it proves | Uses | Needs Docker |
 |---|---|---|---|---|---|
 | 1 | Domain / pure unit | 25 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
-| 2 | Unit with mocks | 33 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
+| 2 | Unit with mocks | 34 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
 | 3 | HTTP client | 9 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
 | 4 | Web slice | 16 | Controllers, security rules (JWT, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
 | 5 | Persistence slice | 12 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
@@ -30,7 +30,7 @@ Current state: **104 tests**, run with `./mvnw test` (JDK 21). Every test class 
 | 7 | Flow | 3 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
 | 8 | Smoke | 1 | The application context starts with all beans wired | `@SpringBootTest`, Testcontainers | **Yes** |
 
-88 tests run without Docker; 16 need it.
+89 tests run without Docker; 16 need it.
 
 ## Where each test lives
 
@@ -59,9 +59,9 @@ Goal: protect the application on every change without making every push wait for
 
 | Suite | Categories | Tests | Command | Intended use |
 |---|---|---|---|---|
-| `fast` | 1, 2, 3, 4, 6 | 88 | `./mvnw test -Pfast` | every push; seconds, no Docker |
+| `fast` | 1, 2, 3, 4, 6 | 89 | `./mvnw test -Pfast` | every push; seconds, no Docker |
 | `integration` | 5, 7, 8 | 16 | `./mvnw test -Pintegration` | every pull request; needs Docker |
-| all | everything | 104 | `./mvnw test` | before merging to `main` |
+| all | everything | 105 | `./mvnw test` | before merging to `main` |
 
 Category 6 (architecture) sits in `fast` on purpose: it is cheap and it is the test that stops a broken dependency from reaching the PR.
 

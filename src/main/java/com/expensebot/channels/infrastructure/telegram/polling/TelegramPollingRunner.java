@@ -26,6 +26,7 @@ public class TelegramPollingRunner implements SmartLifecycle {
 
     @Override
     public void start() {
+        if (running) return;
         running = true;
         thread = Thread.ofPlatform().name("telegram-polling").daemon().start(this::loop);
         log.info("Telegram long polling started");
@@ -34,7 +35,9 @@ public class TelegramPollingRunner implements SmartLifecycle {
     @Override
     public void stop() {
         running = false;
-        thread.interrupt();
+        if (thread != null) {
+            thread.interrupt();
+        }
         log.info("Telegram long polling stopped");
     }
 

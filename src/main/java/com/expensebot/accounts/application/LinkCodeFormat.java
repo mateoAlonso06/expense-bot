@@ -36,6 +36,20 @@ final class LinkCodeFormat {
         return input.strip().replace("-", "").toUpperCase(Locale.ROOT);
     }
 
+    /** Whether the text, once normalized, has the shape of a code. Says nothing about whether it is a real one. */
+    static boolean looksLikeCode(String input) {
+        String code = normalize(input);
+        if (code.length() != LENGTH) {
+            return false;
+        }
+        for (int i = 0; i < code.length(); i++) {
+            if (ALPHABET.indexOf(code.charAt(i)) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     static String hash(String code) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")

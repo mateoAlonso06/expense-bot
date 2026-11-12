@@ -6,6 +6,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class LinkCodePersistenceAdapter implements LinkCodeRepository {
@@ -28,5 +31,19 @@ public class LinkCodePersistenceAdapter implements LinkCodeRepository {
                 .param("codeHash", linkCode.getCodeHash())
                 .param("expiresAt", Timestamp.from(linkCode.getExpiresAt()))
                 .update();
+    }
+
+    // One statement does the check and the write: the row is only returned to the one transaction that flips
+    // used_at, so two concurrent attempts cannot both succeed. RETURNING gives us the owner without a second query.
+    @Override
+    public Optional<UUID> consume(String codeHash, Instant now) {
+        return jdbcClient
+                .sql("UPDATE link_code SET used_at = :now, updated_at = :now "
+                        + "WHERE code_hash = :codeHash AND used_at IS NULL AND expires_at > :now "
+                        + "RETURNING user_id")
+                .param("now", Timestamp.from(now))
+                .param("codeHash", codeHash)
+                .query(UUID.class)
+                .optional();
     }
 }

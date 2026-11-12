@@ -29,6 +29,22 @@ class LinkCodeFormatTest {
         assertThat(LinkCodeFormat.normalize("  k7m4-9qxt \n")).isEqualTo("K7M49QXT");
     }
 
+    @Test
+    void recognizesACodeHoweverItWasTyped() {
+        assertThat(LinkCodeFormat.looksLikeCode("K7M4-9QXT")).isTrue();
+        assertThat(LinkCodeFormat.looksLikeCode("  k7m49qxt \n")).isTrue();
+    }
+
+    @Test
+    void doesNotTakeAnOrdinaryMessageForACode() {
+        assertThat(LinkCodeFormat.looksLikeCode("gasté 500 en el super")).isFalse();
+        assertThat(LinkCodeFormat.looksLikeCode("")).isFalse();
+        assertThat(LinkCodeFormat.looksLikeCode("K7M4-9QX")).isFalse(); // one character short
+        assertThat(LinkCodeFormat.looksLikeCode("K7M4-9QXTT")).isFalse(); // one character too many
+        assertThat(LinkCodeFormat.looksLikeCode("K7M4-9QX0")).isFalse(); // 0 is not in the alphabet
+        assertThat(LinkCodeFormat.looksLikeCode("12345678")).isFalse(); // 1 is not in the alphabet
+    }
+
     // The expected value comes from outside this code: printf %s K7M49QXT | sha256sum. Computing it with
     // LinkCodeFormat.hash itself would make the test pass even if hash returned the wrong thing.
     @Test

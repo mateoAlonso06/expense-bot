@@ -93,6 +93,28 @@ class ChannelIdentityPersistenceAdapterTest {
         assertThatThrownBy(() -> adapter.saveIfAvailable(identity)).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void findsTheUserWhoLinkedTheAccount() {
+        var userId = newUser();
+        var externalId = newExternalId();
+        adapter.saveIfAvailable(ChannelIdentity.create(userId, Channel.TELEGRAM, externalId));
+
+        assertThat(adapter.findUserId(Channel.TELEGRAM, externalId)).contains(userId);
+    }
+
+    @Test
+    void findsNobodyForAnAccountThatWasNeverLinked() {
+        assertThat(adapter.findUserId(Channel.TELEGRAM, newExternalId())).isEmpty();
+    }
+
+    @Test
+    void doesNotMixUpTheSameExternalIdOnAnotherChannel() {
+        var externalId = newExternalId();
+        adapter.saveIfAvailable(ChannelIdentity.create(newUser(), Channel.TELEGRAM, externalId));
+
+        assertThat(adapter.findUserId(Channel.WHATSAPP, externalId)).isEmpty();
+    }
+
     private UUID newUser() {
         var userId = UUID.randomUUID();
         jdbc.update("INSERT INTO user_profile (id, email) VALUES (?, ?)", userId, userId + "@example.com");

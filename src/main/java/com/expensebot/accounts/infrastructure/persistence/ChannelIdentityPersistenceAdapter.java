@@ -1,9 +1,13 @@
 package com.expensebot.accounts.infrastructure.persistence;
 
+import com.expensebot.accounts.Channel;
 import com.expensebot.accounts.application.ChannelIdentityRepository;
 import com.expensebot.accounts.domain.ChannelIdentity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class ChannelIdentityPersistenceAdapter implements ChannelIdentityRepository {
@@ -28,5 +32,16 @@ public class ChannelIdentityPersistenceAdapter implements ChannelIdentityReposit
                 .param("externalId", identity.getExternalId())
                 .update();
         return inserted == 1;
+    }
+
+    // Served by the index behind UNIQUE (channel, external_id), so this runs on every incoming message cheaply.
+    @Override
+    public Optional<UUID> findUserId(Channel channel, String externalId) {
+        return jdbcClient
+                .sql("SELECT user_id FROM channel_identity WHERE channel = :channel AND external_id = :externalId")
+                .param("channel", channel.name())
+                .param("externalId", externalId)
+                .query(UUID.class)
+                .optional();
     }
 }

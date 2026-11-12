@@ -1,6 +1,10 @@
 package com.expensebot.accounts.application;
 
+import com.expensebot.accounts.Channel;
 import com.expensebot.accounts.domain.ChannelIdentity;
+
+import java.util.Optional;
+import java.util.UUID;
 
 public interface ChannelIdentityRepository {
     /**
@@ -10,4 +14,7 @@ public interface ChannelIdentityRepository {
      * @return true if it was stored, false if it conflicted
      */
     boolean saveIfAvailable(ChannelIdentity identity);
+
+    /** The user who linked this channel account, or empty if nobody did. */
+    Optional<UUID> findUserId(Channel channel, String externalId);
 }

@@ -2,7 +2,7 @@
 
 Expense-tracking bot. Users log expenses through Telegram (later WhatsApp) using natural language, receipt photos or voice notes. An AI agent extracts and categorizes them. A web panel (separate SPA) shows history, dashboards and limits. Portfolio project aimed at Backend + AI Engineering roles.
 
-Tracker: GitHub issues + project board `bills bot kanban` in `mateoAlonso06/bills-bot-spring` (27 issues, milestones MVP / v1 / v2). The issues hold the requirements and acceptance criteria; read the issue before implementing it.
+Tracker: GitHub issues + project board `bills bot kanban` in `mateoAlonso06/expense-bot` (27 issues, milestones MVP / v1 / v2). The issues hold the requirements and acceptance criteria; read the issue before implementing it.
 
 ## Working rules (highest priority)
 

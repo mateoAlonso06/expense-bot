@@ -31,8 +31,9 @@ public class LinkChannelIdentityService implements LinkChannelIdentityUseCase {
 
     @Override
     public LinkResult execute(Channel channel, String externalId, String text) {
-        // Cheap and database-free: most messages are not codes and must reach the agent untouched.
-        if (!LinkCodeFormat.looksLikeCode(text)) {
+        // Cheap and database-free: most messages are not codes and must reach the agent untouched. A message that
+        // only carries an attachment has no text at all.
+        if (text == null || !LinkCodeFormat.looksLikeCode(text)) {
             return LinkResult.NOT_A_CODE;
         }
         // Programmatic transaction (TransactionTemplate) because the outcome decides the commit: a rejected
@@ -46,7 +47,10 @@ public class LinkChannelIdentityService implements LinkChannelIdentityUseCase {
                     ChannelIdentity.create(userId.get(), channel, externalId));
             if (!linked) {
                 status.setRollbackOnly(); // the code was fine, so it must not be burned
-                return LinkResult.CHANNEL_ALREADY_LINKED;
+                boolean alreadyYours = channelIdentityRepository.findUserId(channel, externalId)
+                        .filter(userId.get()::equals)
+                        .isPresent();
+                return alreadyYours ? LinkResult.ALREADY_LINKED_TO_SAME_USER : LinkResult.CHANNEL_ALREADY_LINKED;
             }
             return LinkResult.LINKED;
         });

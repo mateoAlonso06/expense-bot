@@ -169,6 +169,18 @@ class LinkChannelIdentityServiceTest {
     }
 
     @Test
+    void tellsTheUserWhenTheAccountIsAlreadyLinkedToThem() {
+        linkedBefore(userId, "112");
+        String code = issueCodeFor(userId);
+
+        LinkResult result = serviceAt(NOW).execute(Channel.TELEGRAM, "112", code);
+
+        assertThat(result).isEqualTo(LinkResult.ALREADY_LINKED_TO_SAME_USER);
+        assertThat(isUsed(code)).isFalse();
+        assertThat(identitiesOf(userId)).isEqualTo(1);
+    }
+
+    @Test
     void leavesAnOrdinaryMessageAloneAndTouchesNothing() {
         String code = issueCodeFor(userId);
 
@@ -176,5 +188,10 @@ class LinkChannelIdentityServiceTest {
 
         assertThat(result).isEqualTo(LinkResult.NOT_A_CODE);
         assertThat(isUsed(code)).isFalse();
+    }
+
+    @Test
+    void treatsAMessageWithoutTextAsNotACode() {
+        assertThat(serviceAt(NOW).execute(Channel.TELEGRAM, "111", null)).isEqualTo(LinkResult.NOT_A_CODE);
     }
 }

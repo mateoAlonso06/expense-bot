@@ -4,6 +4,7 @@ import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.config.SecurityConfig;
 import com.expensebot.expenses.ListCategoriesUseCase;
 import com.expensebot.expenses.infrastructure.web.CategoryController;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(CategoryController.class)
 @Import(SecurityConfig.class)
+@Tag("web")
 class UserProvisioningFilterTest {
 
     @Autowired

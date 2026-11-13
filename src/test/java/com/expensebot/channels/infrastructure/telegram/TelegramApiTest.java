@@ -1,5 +1,6 @@
 package com.expensebot.channels.infrastructure.telegram;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+@Tag("http-client")
 class TelegramApiTest {
     private static final String BASE = "https://api.telegram.org/botSECRET-TOKEN";
 

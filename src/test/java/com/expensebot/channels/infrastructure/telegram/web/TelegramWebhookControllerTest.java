@@ -3,9 +3,10 @@ package com.expensebot.channels.infrastructure.telegram.web;
 import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.config.SecurityConfig;
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.channels.application.IncomingMessageGateway;
 import com.expensebot.conversation.IncomingMessage;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = TelegramWebhookController.class, properties = "telegram.webhook.secret-token=test-secret")
 @Import({SecurityConfig.class, TelegramUpdateMapper.class})
+@Tag("web")
 class TelegramWebhookControllerTest {
     private static final String URL = "/api/telegram/webhook";
     private static final String TEXT_UPDATE = """

@@ -1,14 +1,17 @@
 package com.expensebot;
 
+import com.expensebot.accounts.RequestLinkCodeUseCase;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
+@Tag("flow")
 class TelegramReplyFlowTest {
     // Each post needs its own update id: the database keeps the ones already seen, and a repeated
     // id would be dropped as a duplicate.
@@ -48,8 +53,14 @@ class TelegramReplyFlowTest {
     private static final AtomicInteger TELEGRAM_STATUS = new AtomicInteger(200);
     private static final HttpServer FAKE_TELEGRAM = startFakeTelegram();
 
+    private static final AtomicLong TELEGRAM_USER_IDS = new AtomicLong(1_000);
+
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private RequestLinkCodeUseCase requestLinkCode;
 
     @DynamicPropertySource
     static void telegramProperties(DynamicPropertyRegistry registry) {
@@ -68,15 +79,40 @@ class TelegramReplyFlowTest {
     }
 
     @Test
-    void anUpdateReceivedByTheWebhookIsAnsweredWithRecibido() throws Exception {
-        postUpdate();
+    void anUnlinkedUserIsAskedToLinkTheAccount() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "gasté 500 en el super");
 
         CapturedRequest request = REQUESTS.poll(2, TimeUnit.SECONDS);
         assertThat(request).isNotNull();
         assertThat(request.path()).isEqualTo("/botTEST-TOKEN/sendMessage");
         JsonNode body = new JsonMapper().readTree(request.body());
-        assertThat(body.get("chat_id").longValue()).isEqualTo(42L);
-        assertThat(body.get("text").asString()).isEqualTo("Recibido");
+        assertThat(body.get("chat_id").longValue()).isEqualTo(telegramUser);
+        assertThat(body.get("text").asString()).startsWith("Todavía no vinculaste tu cuenta");
+    }
+
+    @Test
+    void aUserLinksTheAccountWithACodeAndTheNextMessagesAreAccepted() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        String code = requestLinkCode.execute(newUser()).code();
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, code);
+        assertThat(nextReplyText()).startsWith("Cuenta vinculada");
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "gasté 500 en el super");
+        assertThat(nextReplyText()).isEqualTo("Recibido");
+    }
+
+    @Test
+    void aCodeCannotBeUsedTwice() throws Exception {
+        String code = requestLinkCode.execute(newUser()).code();
+        postUpdate(UPDATE_IDS.incrementAndGet(), TELEGRAM_USER_IDS.incrementAndGet(), code);
+        assertThat(nextReplyText()).startsWith("Cuenta vinculada");
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), TELEGRAM_USER_IDS.incrementAndGet(), code);
+
+        assertThat(nextReplyText()).startsWith("Ese código no es válido");
     }
 
     @Test
@@ -104,13 +140,29 @@ class TelegramReplyFlowTest {
     }
 
     private void postUpdate(long updateId) throws Exception {
+        postUpdate(updateId, 42L, "hola");
+    }
+
+    private void postUpdate(long updateId, long telegramUser, String text) throws Exception {
         mockMvc.perform(post("/api/telegram/webhook")
                         .header("X-Telegram-Bot-Api-Secret-Token", "flow-secret")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"update_id": %d, "message": {"message_id": 1, "from": {"id": 42}, "text": "hola"}}"""
-                                .formatted(updateId)))
+                                {"update_id": %d, "message": {"message_id": 1, "from": {"id": %d}, "text": "%s"}}"""
+                                .formatted(updateId, telegramUser, text)))
                 .andExpect(status().isOk());
+    }
+
+    private UUID newUser() {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO user_profile (id, email) VALUES (?, ?)", id, id + "@example.com");
+        return id;
+    }
+
+    private String nextReplyText() throws Exception {
+        CapturedRequest request = REQUESTS.poll(2, TimeUnit.SECONDS);
+        assertThat(request).isNotNull();
+        return new JsonMapper().readTree(request.body()).get("text").asString();
     }
 
     private static HttpServer startFakeTelegram() {

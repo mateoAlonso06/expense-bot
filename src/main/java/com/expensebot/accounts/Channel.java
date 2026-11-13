@@ -1,4 +1,4 @@
-package com.expensebot.conversation;
+package com.expensebot.accounts;
 
 /** The messaging channels the bot talks through. */
 public enum Channel {

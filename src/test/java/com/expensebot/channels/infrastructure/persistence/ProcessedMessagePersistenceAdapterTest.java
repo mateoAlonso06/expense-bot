@@ -1,6 +1,7 @@
 package com.expensebot.channels.infrastructure.persistence;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -28,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(ProcessedMessagePersistenceAdapter.class)
+@Tag("persistence")
 class ProcessedMessagePersistenceAdapterTest {
 
     @Container

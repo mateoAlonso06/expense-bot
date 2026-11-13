@@ -1,7 +1,8 @@
 package com.expensebot.conversation.application;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.conversation.ReplySender;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class ReplyServiceTest {
     @Mock
     private ReplySender telegramSender;

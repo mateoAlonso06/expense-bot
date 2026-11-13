@@ -1,5 +1,7 @@
 package com.expensebot.conversation;
 
+import com.expensebot.accounts.Channel;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -7,6 +9,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Tag("unit")
 class IncomingMessageTest {
 
     @Test

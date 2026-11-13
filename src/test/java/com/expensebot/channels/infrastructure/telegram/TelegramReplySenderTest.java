@@ -1,6 +1,7 @@
 package com.expensebot.channels.infrastructure.telegram;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class TelegramReplySenderTest {
     @Mock
     private TelegramApi telegramApi;

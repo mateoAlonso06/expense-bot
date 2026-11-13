@@ -1,5 +1,7 @@
 package com.expensebot.conversation;
 
+import com.expensebot.accounts.Channel;
+
 import java.util.List;
 import java.util.Objects;
 

@@ -1,6 +1,7 @@
 package com.expensebot.accounts.application;
 
 import com.expensebot.accounts.domain.UserProfile;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class ProvisionUserProfileServiceTest {
     @Mock
     private UserProfileRepository userProfileRepository;

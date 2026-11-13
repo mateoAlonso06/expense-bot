@@ -2,6 +2,7 @@ package com.expensebot.expenses.application;
 
 import com.expensebot.expenses.CategoryView;
 import com.expensebot.expenses.domain.Category;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 public class ListCategoriesServiceTest {
     @Mock
     private CategoryRepository categoryRepository;

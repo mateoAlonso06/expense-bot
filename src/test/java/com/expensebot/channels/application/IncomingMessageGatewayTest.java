@@ -1,8 +1,9 @@
 package com.expensebot.channels.application;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.conversation.HandleIncomingMessageUseCase;
 import com.expensebot.conversation.IncomingMessage;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@Tag("mocks")
 class IncomingMessageGatewayTest {
     private static final IncomingMessage MESSAGE = new IncomingMessage(Channel.TELEGRAM, "42", "100", "hola", null);
 

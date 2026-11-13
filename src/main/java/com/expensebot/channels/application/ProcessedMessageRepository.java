@@ -1,6 +1,6 @@
 package com.expensebot.channels.application;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 
 public interface ProcessedMessageRepository {
 

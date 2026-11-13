@@ -41,7 +41,7 @@ The graph has no cycles: `channels -> conversation -> {accounts, expenses, budge
 
 | Module | Public API (base package) |
 |---|---|
-| `accounts` | `ProvisionUserProfile`, `RequestLinkCode`, `LinkChannelIdentity`, `FindUserByIdentity` |
+| `accounts` | `ProvisionUserProfile`, `RequestLinkCode`, `LinkChannelIdentity`, `ResolveChannelIdentity` |
 | `expenses` | `RegisterExpense`, `EditExpense`, `ListExpenses`, `ListCategories` (exists), `CategoryView` (exists), events `ExpenseRecorded` / `ExpenseUpdated` |
 | `conversation` | `HandleIncomingMessage`, `ReplySender` (port) |
 | `budgets` | `SetLimit`, `GetSpentVsLimit`, event `LimitThresholdReached` |

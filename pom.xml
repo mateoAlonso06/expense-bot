@@ -229,4 +229,22 @@
         </plugins>
     </build>
 
+    <!-- Test suites, chosen by JUnit @Tag (see docs/testing.md). No profile runs everything.
+         "fast" excludes the slow tags instead of listing the fast ones: ArchUnit runs on its own JUnit engine,
+         which a "groups" filter drops, so ArchitectureTest only runs when nothing selects by tag. -->
+    <profiles>
+        <profile>
+            <id>fast</id>
+            <properties>
+                <excludedGroups>persistence | flow | smoke</excludedGroups>
+            </properties>
+        </profile>
+        <profile>
+            <id>integration</id>
+            <properties>
+                <groups>persistence | flow | smoke</groups>
+            </properties>
+        </profile>
+    </profiles>
+
 </project>

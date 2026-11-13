@@ -4,6 +4,7 @@ import com.expensebot.accounts.ProvisionUserProfileUseCase;
 import com.expensebot.channels.infrastructure.telegram.TelegramUpdateMapper;
 import com.expensebot.config.SecurityConfig;
 import com.expensebot.channels.application.IncomingMessageGateway;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** No secret configured: the endpoint must fail closed, even for a request with an empty header. */
 @WebMvcTest(TelegramWebhookController.class)
 @Import({SecurityConfig.class, TelegramUpdateMapper.class})
+@Tag("web")
 class TelegramWebhookWithoutSecretTest {
 
     @Autowired

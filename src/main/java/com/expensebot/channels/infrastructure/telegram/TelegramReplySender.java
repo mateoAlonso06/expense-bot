@@ -1,6 +1,6 @@
 package com.expensebot.channels.infrastructure.telegram;
 
-import com.expensebot.conversation.Channel;
+import com.expensebot.accounts.Channel;
 import com.expensebot.conversation.ReplySender;
 import org.springframework.stereotype.Component;
 

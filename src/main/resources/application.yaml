@@ -23,6 +23,9 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        # the model used by every ChatClient; it can be overridden per request in code
+        model: gpt-5-mini
 
 accounts:
   link-code:

@@ -236,7 +236,7 @@
         <profile>
             <id>fast</id>
             <properties>
-                <excludedGroups>persistence | flow | smoke</excludedGroups>
+                <excludedGroups>persistence | flow | smoke | llm</excludedGroups>
             </properties>
         </profile>
         <profile>

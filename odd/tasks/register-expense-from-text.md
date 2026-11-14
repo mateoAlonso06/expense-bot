@@ -16,7 +16,7 @@ A linked user writes free text to the bot ("$15.000 carnicería") and an expense
 ## Tasks
 - [x] P1a Storage: migration `expense`, domain `Expense` (validated `create`), `ExpenseRepository` + persistence adapter + tests.
 - [x] P1b Use case: `RegisterExpenseUseCase` (command in, summary out): category defaults to `Other`, date defaults to today in a configured time zone, currency ARS; `CategoryRepository.findById`; tests.
-- [ ] P2 First `ChatClient`: Spring AI + OpenAI configuration (app and CI start without a key), one minimal call behind a port, fake `ChatModel` in tests.
+- [x] P2 First contact with Spring AI: model configured in `application.yaml`, a test that the `ChatClient.Builder` exists without a key (app and CI start without it), and an opt-in `@Tag("llm")` test with one real OpenAI call (`RUN_LLM_TESTS=true`). The port and the extractor wait for P3, when there is a real contract to put behind it.
 - [ ] P3 Structured output: the model returns a Java object (amount, description, category name); schema validation; category name -> catalog id with fallback to `Other`.
 - [ ] P4 Integration: `HandleIncomingMessageService` calls the agent for a linked user, stores the expense, replies with a summary; invalid output -> nothing stored, ask to rephrase; flow test; docs (models table).
 
@@ -38,3 +38,4 @@ A linked user writes free text to the bot ("$15.000 carnicería") and an expense
 ## Progress / next step
 Branch `feat/register-expense` from `main`. P1a done and committed (`Money` is a record, a value-object exception noted in CLAUDE.md): migration V6 (`expense`, check amount > 0, index on `(user_id, spent_on DESC)`), `Expense` domain (amount normalized to 2 decimals, more decimals rejected, blank description -> null), `ExpenseRepository` + `ExpensePersistenceAdapter` on `JdbcClient`. Full suite: 160 tests, 0 failures. Next: P1b.
 P1a committed (`7d9892a`). P1b done, awaiting review (not committed): `RegisterExpenseUseCase` + `RegisterExpenseCommand` / `RegisteredExpense` in the expenses public API, `RegisterExpenseService` (category defaults to `Other`, date to today in `expenses.time-zone`, currency from `expenses.currency`), `CategoryRepository.findById`. Full suite: 174 tests, 0 failures. Next: P2 (first Spring AI contact).
+P1b committed (`dacf65f`). P2 done, awaiting review (not committed): model in `application.yaml` (`gpt-5-mini`, the documented default made explicit), smoke test for the `ChatClient.Builder`, opt-in `OpenAiConnectionTest` (`@Tag("llm")`, `RUN_LLM_TESTS=true`), `llm` excluded from the fast suite, docs/testing.md. The real call has NOT been run (needs the user's key). Next: P3 (structured output).

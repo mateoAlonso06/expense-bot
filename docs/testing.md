@@ -30,6 +30,7 @@ Current state: **116 tests**, run with `./mvnw test` (JDK 21). Every test class 
 | 7 | Flow | 3 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
 | 8 | Smoke | 2 | The application context starts with all beans wired, and the Spring AI `ChatClient.Builder` exists without an API key | `@SpringBootTest`, Testcontainers | **Yes** |
 | 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
+| 9 | LLM extraction | 14 | The real extractor reads fourteen sample messages, some with user-created categories (amount asserted; category and latency printed for review). **Opt-in and not part of any suite**: one call per message | `@SpringBootTest`, a real `OPENAI_API_KEY`, `@ParameterizedTest` | **Yes** |
 
 94 tests run without Docker; 22 need it.
 

@@ -18,7 +18,8 @@ A linked user writes free text to the bot ("$15.000 carnicería") and an expense
 - [x] P1b Use case: `RegisterExpenseUseCase` (command in, summary out): category defaults to `Other`, date defaults to today in a configured time zone, currency ARS; `CategoryRepository.findById`; tests.
 - [x] P2 First contact with Spring AI: model configured in `application.yaml`, a test that the `ChatClient.Builder` exists without a key (app and CI start without it), and an opt-in `@Tag("llm")` test with one real OpenAI call (`RUN_LLM_TESTS=true`). The port and the extractor wait for P3, when there is a real contract to put behind it.
 - [x] P3 Structured output: port `ExpenseExtractor` + `ExpenseDraft` in `conversation.application`, `SpringAiExpenseExtractor` adapter (`ChatClient`, system prompt, `.entity(...)`), fake `ChatModel` in tests. Unreadable output (not JSON, or no amount) -> empty. The category name -> catalog id mapping with fallback to `Other` moved to P4, next to the orchestrator.
-- [ ] P4 Integration: category name -> id with fallback to `Other`; `HandleIncomingMessageService` calls the agent for a linked user, stores the expense, replies with a summary; invalid output -> nothing stored, ask to rephrase; flow test; docs (models table).
+- [x] P4a Category matching: `CategoryMatcher` (package-private, pure) maps the model's category name to a catalog id ignoring case, accents and extra spaces; no fuzzy matching; no match -> empty (the use case then stores `Other`).
+- [ ] P4b Integration: `HandleIncomingMessageService` calls the extractor for a linked user, stores the expense, replies with a summary; invalid output -> nothing stored, ask to rephrase; flow test; docs (models table).
 
 ## Acceptance criteria (from #10)
 - Linked user + a message with an amount: expense stored with amount, description, date (default today) and category.
@@ -34,6 +35,7 @@ A linked user writes free text to the bot ("$15.000 carnicería") and an expense
 - Which OpenAI model: decided in P3, `gpt-4o-mini` with temperature 0 (see Progress). `gpt-5-mini` is the fallback if category accuracy turns out to matter more than latency.
 - `Money` fixes two decimals for every currency (enough for ARS). If other currencies appear, the scale should come from `Currency.getDefaultFractionDigits()` (JPY has 0, KWD 3) and the column scale would need a migration. Not needed for the MVP.
 - Hours of the day vs. date: only the date is stored (`spent_on`).
+- Known limitation of `CategoryMatcher`: if two categories offered to the same user normalize to the same text (e.g. "Ocio" and "ocio" once users can create categories in v2), it returns the first one. Not handled in the MVP, where the catalog is the seeded one; when custom categories arrive, either forbid names that collide after normalization or decide on an explicit tie-break.
 
 ## Progress / next step
 Branch `feat/register-expense` from `main`. P1a done and committed (`Money` is a record, a value-object exception noted in CLAUDE.md): migration V6 (`expense`, check amount > 0, index on `(user_id, spent_on DESC)`), `Expense` domain (amount normalized to 2 decimals, more decimals rejected, blank description -> null), `ExpenseRepository` + `ExpensePersistenceAdapter` on `JdbcClient`. Full suite: 160 tests, 0 failures. Next: P1b.

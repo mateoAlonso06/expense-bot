@@ -70,8 +70,9 @@ class TelegramPollerTest {
 
     @Test
     void confirmsAnUpdateItIgnoresSoItIsNotDeliveredAgain() {
-        var sticker = new TelegramUpdate(20, new TelegramMessage(1, new TelegramUser(42), null, null));
-        when(telegramApi.getUpdates(0, TelegramPoller.TIMEOUT_SECONDS)).thenReturn(List.of(sticker));
+        // e.g. an edited message: the update carries no new `message`
+        var edit = new TelegramUpdate(20, null);
+        when(telegramApi.getUpdates(0, TelegramPoller.TIMEOUT_SECONDS)).thenReturn(List.of(edit));
 
         assertThat(poller().poll(0)).isEqualTo(21);
         verifyNoInteractions(gateway);

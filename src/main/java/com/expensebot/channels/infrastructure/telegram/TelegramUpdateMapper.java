@@ -10,7 +10,11 @@ import java.util.Optional;
 @Component
 public class TelegramUpdateMapper {
 
-    /** Empty when the update is not a message the bot can act on (edits, stickers, no sender...). */
+    /**
+     * Empty when the update is not a new message from a user (edits, channel posts, no sender...). A message without
+     * text (a photo without caption, a sticker, a voice note) is still mapped, with a null text, so the user gets an
+     * answer instead of silence.
+     */
     public Optional<IncomingMessage> toIncomingMessage(TelegramUpdate update) {
         var message = update.message();
         if (message == null || message.from() == null) {
@@ -18,9 +22,6 @@ public class TelegramUpdateMapper {
         }
         // A photo's text travels in `caption`, not in `text`.
         var text = message.text() != null ? message.text() : message.caption();
-        if (text == null || text.isBlank()) {
-            return Optional.empty();
-        }
         return Optional.of(new IncomingMessage(
                 Channel.TELEGRAM,
                 String.valueOf(message.from().id()),

@@ -3,10 +3,12 @@ package com.expensebot.channels.infrastructure.telegram;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -14,12 +16,28 @@ import java.util.function.Supplier;
 /** Calls to the Telegram Bot API. The bot token travels in the URL, so it must never reach a log. */
 @Component
 public class TelegramApi {
+    /**
+     * How long a call may wait for Telegram's answer. It must be longer than any long-polling timeout, because
+     * Telegram keeps a {@code getUpdates} request open that long when no message arrives. Set explicitly: the HTTP
+     * client picked by default (Reactor Netty, present through Spring AI) cuts the wait at 10 seconds.
+     */
+    static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
+
     private final RestClient restClient;
 
     @Autowired
     public TelegramApi(@Value("${telegram.api-base-url:https://api.telegram.org}") String baseUrl,
                        @Value("${telegram.bot-token:}") String botToken) {
-        this(RestClient.builder().baseUrl(baseUrl + "/bot" + botToken).build());
+        this(RestClient.builder()
+                .baseUrl(baseUrl + "/bot" + botToken)
+                .requestFactory(requestFactory())
+                .build());
+    }
+
+    private static JdkClientHttpRequestFactory requestFactory() {
+        var factory = new JdkClientHttpRequestFactory();
+        factory.setReadTimeout(READ_TIMEOUT);
+        return factory;
     }
 
     TelegramApi(RestClient restClient) {
@@ -31,6 +49,9 @@ public class TelegramApi {
      * {@code offset} must be the highest update id already handled plus one, which also confirms the earlier ones.
      */
     public List<TelegramUpdate> getUpdates(long offset, int timeoutSeconds) {
+        if (Duration.ofSeconds(timeoutSeconds).compareTo(READ_TIMEOUT) >= 0) {
+            throw new IllegalArgumentException("The polling timeout must be shorter than the read timeout");
+        }
         return call("getUpdates", () -> restClient.get()
                 .uri("/getUpdates?offset={offset}&timeout={timeout}", offset, timeoutSeconds)
                 .retrieve()

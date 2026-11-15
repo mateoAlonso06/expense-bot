@@ -36,8 +36,8 @@ Current state: **116 tests**, run with `./mvnw test` (JDK 21). Every test class 
 
 ## Where each test lives
 
-1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
-2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ListCategoriesServiceTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
+1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `CategoryMatcherTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
+2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ListCategoriesServiceTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `RegisterExpenseFromTextTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
 3. **HTTP client:** `TelegramApiTest`.
 4. **Web slice:** `UserProvisioningFilterTest`, `TelegramWebhookControllerTest`, `TelegramWebhookWithoutSecretTest`, `JwtAuthenticationTest`, `CategoryControllerTest`, `LinkCodeControllerTest`.
 5. **Persistence slice:** `LinkCodePersistenceAdapterTest`, `ChannelIdentityPersistenceAdapterTest`, `UserProfilePersistenceAdapterTest`, `ProcessedMessagePersistenceAdapterTest`, `CategoryPersistenceAdapterTest`.

@@ -11,14 +11,13 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 /**
- * First decides who is writing: a message that is a link code links the sender; any other message is only
- * accepted from a linked account. Once the agent arrives (#10), the linked branch hands the message to it; until
- * then it acknowledges it with a fixed reply, so the whole loop can be tried with a real bot.
+ * Decides who is writing and routes the message: a link code links the sender; any other message is only accepted
+ * from a linked account, and goes to {@link RegisterExpenseFromText}. Whatever happens, the user gets one reply on the
+ * channel the message came from.
  */
 @Slf4j
 @Service
 public class HandleIncomingMessageService implements HandleIncomingMessageUseCase {
-    static final String ACKNOWLEDGEMENT = "Recibido";
     static final String LINKED = "Cuenta vinculada. Ya podés registrar tus gastos escribiéndome.";
     static final String INVALID_CODE = "Ese código no es válido o ya venció. Pedí uno nuevo en el panel web.";
     static final String CHANNEL_ALREADY_LINKED = "No pude vincular esta cuenta: ya está asociada a un usuario "
@@ -29,13 +28,16 @@ public class HandleIncomingMessageService implements HandleIncomingMessageUseCas
 
     private final LinkChannelIdentityUseCase linkChannelIdentity;
     private final ResolveChannelIdentityUseCase resolveChannelIdentity;
+    private final RegisterExpenseFromText registerExpenseFromText;
     private final ReplyService replyService;
 
-    public HandleIncomingMessageService(LinkChannelIdentityUseCase linkChannelIdentity,
-                                        ResolveChannelIdentityUseCase resolveChannelIdentity,
-                                        ReplyService replyService) {
+    HandleIncomingMessageService(LinkChannelIdentityUseCase linkChannelIdentity,
+                                 ResolveChannelIdentityUseCase resolveChannelIdentity,
+                                 RegisterExpenseFromText registerExpenseFromText,
+                                 ReplyService replyService) {
         this.linkChannelIdentity = linkChannelIdentity;
         this.resolveChannelIdentity = resolveChannelIdentity;
+        this.registerExpenseFromText = registerExpenseFromText;
         this.replyService = replyService;
     }
 
@@ -43,7 +45,17 @@ public class HandleIncomingMessageService implements HandleIncomingMessageUseCas
     public void execute(IncomingMessage message) {
         log.info("Received message channel={} eventId={} attachments={}",
                 message.channel(), message.eventId(), message.attachments().size());
+        try {
+            route(message);
+        } catch (RuntimeException e) {
+            // Typically the database failing. The gateway already registered the message as received, so the
+            // platform will not redeliver it: without this reply the message would be lost without the user knowing.
+            log.error("Failed to handle message channel={} eventId={}", message.channel(), message.eventId(), e);
+            reply(message, RegisterExpenseFromText.TRY_AGAIN);
+        }
+    }
 
+    private void route(IncomingMessage message) {
         // The code is recognized deterministically, before anything else: it never reaches the LLM.
         LinkResult linkResult = linkChannelIdentity.execute(
                 message.channel(), message.externalUserId(), message.text());
@@ -57,7 +69,7 @@ public class HandleIncomingMessageService implements HandleIncomingMessageUseCas
             reply(message, NOT_LINKED);
             return;
         }
-        reply(message, ACKNOWLEDGEMENT);
+        reply(message, registerExpenseFromText.replyTo(userId, message));
     }
 
     private static String linkReply(LinkResult result) {

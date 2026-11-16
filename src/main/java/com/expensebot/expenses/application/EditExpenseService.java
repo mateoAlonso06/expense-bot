@@ -4,6 +4,7 @@ import com.expensebot.expenses.EditExpenseCommand;
 import com.expensebot.expenses.EditExpenseUseCase;
 import com.expensebot.expenses.ExpenseNotFoundException;
 import com.expensebot.expenses.RegisteredExpense;
+import com.expensebot.expenses.UnknownCategoryException;
 import com.expensebot.expenses.domain.Category;
 import com.expensebot.expenses.domain.Expense;
 import com.expensebot.expenses.domain.Money;
@@ -41,7 +42,7 @@ public class EditExpenseService implements EditExpenseUseCase {
         }
         // Loaded even when the category did not change: the answer carries its name.
         Category category = categoryRepository.findById(expense.getCategoryId())
-                .orElseThrow(() -> new IllegalArgumentException("Unknown category: " + expense.getCategoryId()));
+                .orElseThrow(() -> new UnknownCategoryException(expense.getCategoryId()));
 
         expenseRepository.update(expense);
         return new RegisteredExpense(expense.getId(), expense.getMoney().amount(),

@@ -5,7 +5,8 @@ public interface EditExpenseUseCase {
 
     /**
      * @throws ExpenseNotFoundException if the expense does not exist or belongs to another user
-     * @throws IllegalArgumentException if the new amount is invalid or the new category does not exist
+     * @throws UnknownCategoryException if the new category does not exist
+     * @throws IllegalArgumentException if the new amount is invalid
      */
     RegisteredExpense execute(EditExpenseCommand command);
 }

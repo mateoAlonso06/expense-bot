@@ -14,8 +14,8 @@ import java.util.Objects;
  * asking again. A currency must be a real ISO 4217 one: {@link Currency#getInstance(String)} checks that.
  */
 public record Money(BigDecimal amount, Currency currency) {
-    private static final int SCALE = 2;
-    private static final int MAX_PRECISION = 19; // NUMERIC(19,2)
+    public static final int SCALE = 2;
+    public static final int MAX_PRECISION = 19; // NUMERIC(19,2)
 
     // Compact constructor: runs on every creation, so no Money can exist without passing these checks.
     // Reassigning the parameter normalizes the field the record stores.

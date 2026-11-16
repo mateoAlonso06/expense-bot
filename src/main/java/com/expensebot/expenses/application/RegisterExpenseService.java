@@ -3,6 +3,7 @@ package com.expensebot.expenses.application;
 import com.expensebot.expenses.RegisterExpenseCommand;
 import com.expensebot.expenses.RegisterExpenseUseCase;
 import com.expensebot.expenses.RegisteredExpense;
+import com.expensebot.expenses.UnknownCategoryException;
 import com.expensebot.expenses.domain.Category;
 import com.expensebot.expenses.domain.Expense;
 import com.expensebot.expenses.domain.Money;
@@ -45,7 +46,7 @@ public class RegisterExpenseService implements RegisterExpenseUseCase {
 
         UUID categoryId = command.categoryId() != null ? command.categoryId() : Category.OTHER_ID;
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown category: " + categoryId));
+                .orElseThrow(() -> new UnknownCategoryException(categoryId));
         LocalDate spentOn = command.spentOn() != null ? command.spentOn() : today();
 
         Expense expense = toExpense(command, category, spentOn);

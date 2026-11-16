@@ -20,7 +20,7 @@ An expense the LLM recorded wrong (amount misread, wrong category) can only be f
 
 ## Tasks
 - [x] P1 Domain + persistence: `Expense.restore`, `changeAmount` / `changeDescription` / `changeCategory` (the only mutators, so the rest stays immutable); `ExpenseRepository.findByIdAndUserId` and `update` (only category, amount, description, `updated_at`). Tests.
-- [ ] P2 Use case: `EditExpenseUseCase` + `EditExpenseCommand` in the public API, `EditExpenseService` (load owned expense or not-found exception, check the category exists, apply changes, save), result record. Tests with mocks.
+- [x] P2 Use case: `EditExpenseUseCase` + `EditExpenseCommand` in the public API, `EditExpenseService` (load owned expense or not-found exception, check the category exists, apply changes, save), result record. Tests with mocks.
 - [ ] P3 Web: `ExpenseController` `PATCH /api/expenses/{id}`, request DTO with Bean Validation that rejects unknown and immutable fields, `@RestControllerAdvice` with `ProblemDetail` (404, 400). `@WebMvcTest` tests; docs/testing.md counts.
 
 ## Acceptance criteria (from #12)
@@ -31,3 +31,4 @@ An expense the LLM recorded wrong (amount misread, wrong category) can only be f
 
 ## Progress / next step
 Branch `feat/edit-expense` from `main` (`aa2fe4e`). P1 done and committed: `Expense` editable fields are no longer `final` and change only through `changeAmount` (positive, same currency) / `changeDescription` / `changeCategory`; `restore` added. `findByIdAndUserId` filters by owner in SQL; `update` writes only category, amount, description and `updated_at`, and fails if no row matched. Full suite: 221 tests, 0 failures (2 opt-in skipped). Next: P2.
+Also committed: `83d63d0` (JdbcClient as the persistence default in CLAUDE.md), `43f9957` (explicit `spring-boot-starter-jdbc`). P2 done and committed: `EditExpenseUseCase`, `EditExpenseCommand` (null = unchanged, user and expense ids required), `ExpenseNotFoundException` in the public API; `EditExpenseService` loads the owned expense, applies the changes through the domain (currency kept from the expense), checks the category and stores. The result reuses `RegisteredExpense` (Javadoc widened to "registered or edited"). Full suite: 229 tests, 0 failures (2 opt-in skipped). Next: P3.

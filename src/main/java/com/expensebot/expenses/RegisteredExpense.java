@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** A stored expense, with what the bot needs to summarize it back to the user. */
+/** A stored expense (just registered or edited), with what is needed to show it back to the user. */
 public record RegisteredExpense(
         UUID id,
         BigDecimal amount,

@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **116 tests**, run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **233 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -21,26 +21,26 @@ Current state: **116 tests**, run with `./mvnw test` (JDK 21). Every test class 
 
 | # | Category | Tests | What it proves | Uses | Needs Docker |
 |---|---|---|---|---|---|
-| 1 | Domain / pure unit | 28 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
-| 2 | Unit with mocks | 34 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
-| 3 | HTTP client | 9 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
-| 4 | Web slice | 18 | Controllers, security rules (JWT, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
-| 5 | Persistence slice | 18 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
+| 1 | Domain / pure unit | 63 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
+| 2 | Unit with mocks | 75 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
+| 3 | HTTP client | 10 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
+| 4 | Web slice | 26 | Controllers, security rules (JWT, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
+| 5 | Persistence slice | 46 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
 | 6 | Architecture | 5 | Module and layer rules are not broken (domain has no Spring, application does not touch infrastructure, ...) | ArchUnit (`@ArchTest`) | No |
-| 7 | Flow | 3 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
+| 7 | Flow | 6 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
 | 8 | Smoke | 2 | The application context starts with all beans wired, and the Spring AI `ChatClient.Builder` exists without an API key | `@SpringBootTest`, Testcontainers | **Yes** |
 | 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
 | 9 | LLM extraction | 14 | The real extractor reads fourteen sample messages, some with user-created categories (amount asserted; category and latency printed for review). **Opt-in and not part of any suite**: one call per message | `@SpringBootTest`, a real `OPENAI_API_KEY`, `@ParameterizedTest` | **Yes** |
 
-94 tests run without Docker; 22 need it.
+179 tests run without Docker; 54 need it.
 
 ## Where each test lives
 
-1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `CategoryMatcherTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
-2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ListCategoriesServiceTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `RegisterExpenseFromTextTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
+1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `MoneyTest`, `ExpenseTest`, `CategoryMatcherTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
+2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ResolveChannelIdentityServiceTest`, `ListCategoriesServiceTest`, `RegisterExpenseServiceTest`, `EditExpenseServiceTest`, `SpringAiExpenseExtractorTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `RegisterExpenseFromTextTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
 3. **HTTP client:** `TelegramApiTest`.
-4. **Web slice:** `UserProvisioningFilterTest`, `TelegramWebhookControllerTest`, `TelegramWebhookWithoutSecretTest`, `JwtAuthenticationTest`, `CategoryControllerTest`, `LinkCodeControllerTest`.
-5. **Persistence slice:** `LinkCodePersistenceAdapterTest`, `ChannelIdentityPersistenceAdapterTest`, `UserProfilePersistenceAdapterTest`, `ProcessedMessagePersistenceAdapterTest`, `CategoryPersistenceAdapterTest`.
+4. **Web slice:** `UserProvisioningFilterTest`, `TelegramWebhookControllerTest`, `TelegramWebhookWithoutSecretTest`, `JwtAuthenticationTest`, `CategoryControllerTest`, `ExpenseControllerTest`, `LinkCodeControllerTest`.
+5. **Persistence slice:** `LinkCodePersistenceAdapterTest`, `ChannelIdentityPersistenceAdapterTest`, `UserProfilePersistenceAdapterTest`, `ProcessedMessagePersistenceAdapterTest`, `CategoryPersistenceAdapterTest`, `ExpensePersistenceAdapterTest`, `LinkChannelIdentityServiceTest` (a service tested against the real database).
 6. **Architecture:** `ArchitectureTest`.
 7. **Flow:** `TelegramReplyFlowTest`.
 8. **Smoke:** `ExpenseBotApplicationTests`.

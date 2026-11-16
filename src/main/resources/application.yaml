@@ -1,6 +1,9 @@
 spring:
   application:
     name: expense-bot
+  mvc:
+    problemdetails:
+      enabled: true # Spring's own errors (invalid body, failed validation) answer as RFC 9457 problem details
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:expense-app}

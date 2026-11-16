@@ -8,7 +8,10 @@ import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 
-/** An expense a user logged. Only the amount, the description and the category will ever be editable. */
+/**
+ * An expense a user logged. Only the amount, the description and the category are editable, through the
+ * {@code change...} methods; everything else is fixed when the expense is created.
+ */
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Expense {
@@ -17,9 +20,9 @@ public class Expense {
     @EqualsAndHashCode.Include
     private final UUID id;
     private final UUID userId;
-    private final UUID categoryId;
-    private final Money money;
-    private final String description;
+    private UUID categoryId;
+    private Money money;
+    private String description;
     private final LocalDate spentOn;
     private final Channel sourceChannel;
     private final String originalMessage;
@@ -45,11 +48,40 @@ public class Expense {
         Objects.requireNonNull(spentOn, "Date is required");
         Objects.requireNonNull(sourceChannel, "Source channel is required");
         Objects.requireNonNull(originalMessage, "Original message is required");
+        return new Expense(UUID.randomUUID(), userId, categoryId, positive(money), normalizeDescription(description),
+                spentOn, sourceChannel, validOriginalMessage(originalMessage));
+    }
+
+    /** An expense already stored: no validation, the data was valid when it was saved. */
+    public static Expense restore(UUID id, UUID userId, UUID categoryId, Money money, String description,
+                                  LocalDate spentOn, Channel sourceChannel, String originalMessage) {
+        return new Expense(id, userId, categoryId, money, description, spentOn, sourceChannel, originalMessage);
+    }
+
+    /** The new amount must be positive and keep the expense's currency (there is no conversion). */
+    public void changeAmount(Money newMoney) {
+        Objects.requireNonNull(newMoney, "Money is required");
+        if (!newMoney.currency().equals(money.currency())) {
+            throw new IllegalArgumentException("The currency of an expense cannot change");
+        }
+        this.money = positive(newMoney);
+    }
+
+    /** Same rules as on creation: a blank description clears it, the rest is trimmed. */
+    public void changeDescription(String newDescription) {
+        this.description = normalizeDescription(newDescription);
+    }
+
+    /** Whether the category exists is checked by the caller, which has the catalog. */
+    public void changeCategory(UUID newCategoryId) {
+        this.categoryId = Objects.requireNonNull(newCategoryId, "Category id is required");
+    }
+
+    private static Money positive(Money money) {
         if (!money.isPositive()) {
             throw new IllegalArgumentException("Amount must be greater than zero");
         }
-        return new Expense(UUID.randomUUID(), userId, categoryId, money, normalizeDescription(description),
-                spentOn, sourceChannel, validOriginalMessage(originalMessage));
+        return money;
     }
 
     private static String normalizeDescription(String description) {

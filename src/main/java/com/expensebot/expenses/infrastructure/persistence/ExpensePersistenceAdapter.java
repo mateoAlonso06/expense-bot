@@ -1,11 +1,17 @@
 package com.expensebot.expenses.infrastructure.persistence;
 
+import com.expensebot.accounts.Channel;
 import com.expensebot.expenses.application.ExpenseRepository;
 import com.expensebot.expenses.domain.Expense;
+import com.expensebot.expenses.domain.Money;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
+import java.time.LocalDate;
+import java.util.Currency;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class ExpensePersistenceAdapter implements ExpenseRepository {
@@ -34,5 +40,41 @@ public class ExpensePersistenceAdapter implements ExpenseRepository {
                 .param("sourceChannel", expense.getSourceChannel().name())
                 .param("originalMessage", expense.getOriginalMessage())
                 .update();
+    }
+
+    // Filtering by user in the query (not after loading) keeps another user's expense out of reach by construction.
+    @Override
+    public Optional<Expense> findByIdAndUserId(UUID id, UUID userId) {
+        return jdbcClient
+                .sql("SELECT id, user_id, category_id, amount, currency, description, spent_on, source_channel, "
+                        + "original_message FROM expense WHERE id = :id AND user_id = :userId")
+                .param("id", id)
+                .param("userId", userId)
+                .query((rs, rowNum) -> Expense.restore(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("user_id", UUID.class),
+                        rs.getObject("category_id", UUID.class),
+                        new Money(rs.getBigDecimal("amount"), Currency.getInstance(rs.getString("currency"))),
+                        rs.getString("description"),
+                        rs.getObject("spent_on", LocalDate.class),
+                        Channel.valueOf(rs.getString("source_channel")),
+                        rs.getString("original_message")))
+                .optional();
+    }
+
+    // Only the editable columns: even if a bug changed another field in memory, the stored record keeps it.
+    @Override
+    public void update(Expense expense) {
+        int updated = jdbcClient
+                .sql("UPDATE expense SET category_id = :categoryId, amount = :amount, description = :description, "
+                        + "updated_at = now() WHERE id = :id")
+                .param("id", expense.getId())
+                .param("categoryId", expense.getCategoryId())
+                .param("amount", expense.getMoney().amount())
+                .param("description", expense.getDescription())
+                .update();
+        if (updated != 1) {
+            throw new IllegalStateException("Expense to update not found: " + expense.getId());
+        }
     }
 }

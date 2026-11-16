@@ -4,7 +4,8 @@ package com.expensebot.expenses;
 public interface RegisterExpenseUseCase {
 
     /**
-     * @throws IllegalArgumentException if the amount is invalid or the category does not exist
+     * @throws UnknownCategoryException if the category does not exist
+     * @throws IllegalArgumentException if the amount is invalid
      */
     RegisteredExpense execute(RegisterExpenseCommand command);
 }

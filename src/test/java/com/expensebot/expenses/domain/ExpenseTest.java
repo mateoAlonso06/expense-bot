@@ -72,6 +72,73 @@ class ExpenseTest {
     }
 
     @Test
+    void restoresAStoredExpenseAsItWas() {
+        var id = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+
+        var expense = Expense.restore(id, userId, Category.OTHER_ID, TEN, "café", DAY, Channel.TELEGRAM, "10 café");
+
+        assertThat(expense.getId()).isEqualTo(id);
+        assertThat(expense.getUserId()).isEqualTo(userId);
+        assertThat(expense.getMoney()).isEqualTo(TEN);
+        assertThat(expense.getDescription()).isEqualTo("café");
+        assertThat(expense.getSpentOn()).isEqualTo(DAY);
+        assertThat(expense.getOriginalMessage()).isEqualTo("10 café");
+    }
+
+    @Test
+    void changesTheAmount() {
+        var expense = expense(TEN, null, "10");
+        var twenty = new Money(new BigDecimal("20"), Currency.getInstance("ARS"));
+
+        expense.changeAmount(twenty);
+
+        assertThat(expense.getMoney()).isEqualTo(twenty);
+    }
+
+    @Test
+    void rejectsANewAmountThatIsNotPositiveAndKeepsTheOldOne() {
+        var expense = expense(TEN, null, "10");
+
+        assertThatThrownBy(() -> expense.changeAmount(new Money(BigDecimal.ZERO, Currency.getInstance("ARS"))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(expense.getMoney()).isEqualTo(TEN);
+    }
+
+    @Test
+    void rejectsANewAmountInAnotherCurrency() {
+        var expense = expense(TEN, null, "10");
+
+        assertThatThrownBy(() -> expense.changeAmount(new Money(BigDecimal.TEN, Currency.getInstance("USD"))))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void changesTheDescriptionWithTheSameRulesAsOnCreation() {
+        var expense = expense(TEN, "café", "10");
+
+        expense.changeDescription("  medialunas ");
+        assertThat(expense.getDescription()).isEqualTo("medialunas");
+
+        expense.changeDescription(" ");
+        assertThat(expense.getDescription()).isNull();
+
+        assertThatThrownBy(() -> expense.changeDescription("x".repeat(Expense.DESCRIPTION_MAX_LENGTH + 1)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void changesTheCategory() {
+        var expense = expense(TEN, null, "10");
+        var food = UUID.randomUUID();
+
+        expense.changeCategory(food);
+
+        assertThat(expense.getCategoryId()).isEqualTo(food);
+        assertThatThrownBy(() -> expense.changeCategory(null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
     void requiresEveryOtherField() {
         var user = UUID.randomUUID();
         assertThatThrownBy(() -> Expense.create(null, Category.OTHER_ID, TEN, null, DAY, Channel.TELEGRAM, "m"))

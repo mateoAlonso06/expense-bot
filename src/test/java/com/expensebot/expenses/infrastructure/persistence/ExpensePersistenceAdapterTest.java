@@ -97,4 +97,62 @@ class ExpensePersistenceAdapterTest {
         assertThatThrownBy(() -> adapter.save(expense(userId, UUID.randomUUID(), "100", null)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    @Test
+    void findsAnExpenseOfItsOwnerWithEveryField() {
+        var stored = expense(userId, Category.OTHER_ID, "15000", "carnicería");
+        adapter.save(stored);
+
+        var found = adapter.findByIdAndUserId(stored.getId(), userId);
+
+        assertThat(found).hasValueSatisfying(expense -> {
+            assertThat(expense.getId()).isEqualTo(stored.getId());
+            assertThat(expense.getUserId()).isEqualTo(userId);
+            assertThat(expense.getCategoryId()).isEqualTo(Category.OTHER_ID);
+            assertThat(expense.getMoney()).isEqualTo(stored.getMoney());
+            assertThat(expense.getDescription()).isEqualTo("carnicería");
+            assertThat(expense.getSpentOn()).isEqualTo(DAY);
+            assertThat(expense.getSourceChannel()).isEqualTo(Channel.TELEGRAM);
+            assertThat(expense.getOriginalMessage()).isEqualTo("$15.000 carnicería");
+        });
+    }
+
+    @Test
+    void doesNotFindAnotherUsersExpenseNorAnUnknownOne() {
+        var stored = expense(userId, Category.OTHER_ID, "100", null);
+        adapter.save(stored);
+
+        assertThat(adapter.findByIdAndUserId(stored.getId(), UUID.randomUUID())).isEmpty();
+        assertThat(adapter.findByIdAndUserId(UUID.randomUUID(), userId)).isEmpty();
+    }
+
+    @Test
+    void updatesOnlyTheEditableFields() {
+        var stored = expense(userId, Category.OTHER_ID, "100", "café");
+        adapter.save(stored);
+        // now() is the start of the test transaction, so push updated_at back to see it move.
+        jdbc.update("UPDATE expense SET updated_at = now() - interval '1 day' WHERE id = ?", stored.getId());
+        UUID food = jdbc.queryForObject("SELECT id FROM category WHERE name = 'Alimentación'", UUID.class);
+        var expense = adapter.findByIdAndUserId(stored.getId(), userId).orElseThrow();
+
+        expense.changeAmount(new Money(new BigDecimal("250.50"), Currency.getInstance("ARS")));
+        expense.changeDescription("medialunas");
+        expense.changeCategory(food);
+        adapter.update(expense);
+
+        Map<String, Object> row = jdbc.queryForMap("SELECT * FROM expense WHERE id = ?", stored.getId());
+        assertThat((BigDecimal) row.get("amount")).isEqualByComparingTo("250.50");
+        assertThat(row.get("description")).isEqualTo("medialunas");
+        assertThat(row.get("category_id")).isEqualTo(food);
+        assertThat(((Date) row.get("spent_on")).toLocalDate()).isEqualTo(DAY);
+        assertThat(row.get("original_message")).isEqualTo("$15.000 carnicería");
+        assertThat((Boolean) jdbc.queryForObject(
+                "SELECT updated_at = now() FROM expense WHERE id = ?", Boolean.class, stored.getId())).isTrue();
+    }
+
+    @Test
+    void failsToUpdateAnExpenseThatIsNotStored() {
+        assertThatThrownBy(() -> adapter.update(expense(userId, Category.OTHER_ID, "100", null)))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }

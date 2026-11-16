@@ -30,9 +30,12 @@ class IncomingMessageTest {
     }
 
     @Test
-    void rejectsAMessageWithNeitherTextNorAttachments() {
-        assertThatThrownBy(() -> new IncomingMessage(Channel.TELEGRAM, "42", "1001", " ", List.of()))
-                .isInstanceOf(IllegalArgumentException.class);
+    void acceptsAMessageWithContentTheChannelDoesNotRead() {
+        // e.g. a sticker: the application still has to answer it
+        var message = new IncomingMessage(Channel.TELEGRAM, "42", "1001", null, null);
+
+        assertThat(message.text()).isNull();
+        assertThat(message.attachments()).isEmpty();
     }
 
     @Test

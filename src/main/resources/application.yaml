@@ -23,6 +23,11 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        # the model used by every ChatClient; it can be overridden per request in code
+        model: gpt-4o-mini
+        # extraction should be repeatable: the same message gives the same answer
+        temperature: 0.0
 
 accounts:
   link-code:

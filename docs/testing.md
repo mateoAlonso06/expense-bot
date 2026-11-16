@@ -28,14 +28,16 @@ Current state: **116 tests**, run with `./mvnw test` (JDK 21). Every test class 
 | 5 | Persistence slice | 18 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
 | 6 | Architecture | 5 | Module and layer rules are not broken (domain has no Spring, application does not touch infrastructure, ...) | ArchUnit (`@ArchTest`) | No |
 | 7 | Flow | 3 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
-| 8 | Smoke | 1 | The application context starts with all beans wired | `@SpringBootTest`, Testcontainers | **Yes** |
+| 8 | Smoke | 2 | The application context starts with all beans wired, and the Spring AI `ChatClient.Builder` exists without an API key | `@SpringBootTest`, Testcontainers | **Yes** |
+| 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
+| 9 | LLM extraction | 14 | The real extractor reads fourteen sample messages, some with user-created categories (amount asserted; category and latency printed for review). **Opt-in and not part of any suite**: one call per message | `@SpringBootTest`, a real `OPENAI_API_KEY`, `@ParameterizedTest` | **Yes** |
 
 94 tests run without Docker; 22 need it.
 
 ## Where each test lives
 
-1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
-2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ListCategoriesServiceTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
+1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `CategoryMatcherTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
+2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ListCategoriesServiceTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `RegisterExpenseFromTextTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
 3. **HTTP client:** `TelegramApiTest`.
 4. **Web slice:** `UserProvisioningFilterTest`, `TelegramWebhookControllerTest`, `TelegramWebhookWithoutSecretTest`, `JwtAuthenticationTest`, `CategoryControllerTest`, `LinkCodeControllerTest`.
 5. **Persistence slice:** `LinkCodePersistenceAdapterTest`, `ChannelIdentityPersistenceAdapterTest`, `UserProfilePersistenceAdapterTest`, `ProcessedMessagePersistenceAdapterTest`, `CategoryPersistenceAdapterTest`.
@@ -65,10 +67,11 @@ Goal: protect the application on every change without making every push wait for
 
 Category 6 (architecture) sits in `fast` on purpose: it is cheap and it is the test that stops a broken dependency from reaching the PR.
 
-**Tags.** Each class has one `@Tag` from this list: `unit`, `mocks`, `http-client`, `web`, `persistence`, `flow`, `smoke` (category 6 is the exception, see below). A single category can also be run with `./mvnw test -Dgroups=web`.
+**Tags.** Each class has one `@Tag` from this list: `unit`, `mocks`, `http-client`, `web`, `persistence`, `flow`, `smoke`, `llm` (category 6 is the exception, see below). A single category can also be run with `./mvnw test -Dgroups=web`.
 
 **Two things worth knowing.**
 - `fast` is defined as "everything except `persistence`, `flow` and `smoke`" (`excludedGroups` in the `pom.xml`), not as a list of fast tags. ArchUnit runs on its own JUnit engine, and a tag filter (`groups`) drops it: this was verified, a first version listing the fast tags skipped the 5 ArchUnit tests. `ArchitectureTest` therefore has no tag.
+- `llm` is excluded from `fast` and absent from `integration`, and the test is also guarded by `RUN_LLM_TESTS=true`, so it never calls OpenAI by accident. Run it with `RUN_LLM_TESTS=true ./mvnw test -Dtest=OpenAiConnectionTest` and a real `OPENAI_API_KEY` in the shell.
 - A new test class that forgets its tag lands in `fast`. If it is a slow one that needs Docker, it fails there and the omission shows up. Always tag a new class with its category.
 
 **CI (GitHub Actions).** `.github/workflows/ci.yml` runs on every pull request to `main` and on every push to `main`. It has two parallel jobs, `fast` and `integration`, which together run every test. Both install Temurin JDK 21 and cache the Maven repository. The `integration` job relies on the Docker engine preinstalled on GitHub's `ubuntu-latest` runners for Testcontainers. When a job fails, its Surefire reports are uploaded as a workflow artifact (kept 7 days). Pushes to feature branches without a pull request do not trigger CI: run `-Pfast` locally before pushing.

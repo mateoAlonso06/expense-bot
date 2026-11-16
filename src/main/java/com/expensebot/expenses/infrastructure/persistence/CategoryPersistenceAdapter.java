@@ -5,6 +5,8 @@ import com.expensebot.expenses.domain.Category;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class CategoryPersistenceAdapter implements CategoryRepository {
@@ -18,7 +20,16 @@ public class CategoryPersistenceAdapter implements CategoryRepository {
     public List<Category> findAll() {
         return categoryJpaRepository.findAll()
                 .stream()
-                .map(entity -> Category.restore(entity.getId(), entity.getName(), entity.isSystem()))
+                .map(CategoryPersistenceAdapter::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<Category> findById(UUID id) {
+        return categoryJpaRepository.findById(id).map(CategoryPersistenceAdapter::toDomain);
+    }
+
+    private static Category toDomain(CategoryJpaEntity entity) {
+        return Category.restore(entity.getId(), entity.getName(), entity.isSystem());
     }
 }

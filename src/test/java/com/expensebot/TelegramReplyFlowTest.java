@@ -1,6 +1,8 @@
 package com.expensebot;
 
 import com.expensebot.accounts.RequestLinkCodeUseCase;
+import com.expensebot.conversation.application.ExpenseDraft;
+import com.expensebot.conversation.application.ExpenseExtractor;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,8 +23,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -30,6 +35,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,6 +69,8 @@ class TelegramReplyFlowTest {
     private JdbcTemplate jdbc;
     @Autowired
     private RequestLinkCodeUseCase requestLinkCode;
+    @MockitoBean
+    private ExpenseExtractor expenseExtractor;
 
     @DynamicPropertySource
     static void telegramProperties(DynamicPropertyRegistry registry) {
@@ -93,15 +103,38 @@ class TelegramReplyFlowTest {
     }
 
     @Test
-    void aUserLinksTheAccountWithACodeAndTheNextMessagesAreAccepted() throws Exception {
+    void aUserLinksTheAccountAndTheNextMessageIsStoredAsAnExpense() throws Exception {
         long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
-        String code = requestLinkCode.execute(newUser()).code();
+        UUID userId = newUser();
+        String code = requestLinkCode.execute(userId).code();
+        // The model is replaced: the CI has no API key. The category name comes back without its accent on purpose.
+        when(expenseExtractor.extract(eq("gasté 500 en el super"), anyList()))
+                .thenReturn(Optional.of(new ExpenseDraft(new BigDecimal("500"), "súper", "alimentacion")));
 
         postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, code);
         assertThat(nextReplyText()).startsWith("Cuenta vinculada");
 
         postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "gasté 500 en el super");
-        assertThat(nextReplyText()).isEqualTo("Recibido");
+        assertThat(nextReplyText()).startsWith("Registré $500,00 en Alimentación (");
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM expense e JOIN category c ON c.id = e.category_id
+                WHERE e.user_id = ? AND e.amount = 500.00 AND c.name = 'Alimentación'""",
+                Integer.class, userId)).isEqualTo(1);
+    }
+
+    @Test
+    void aMessageWithoutAnAmountStoresNothingAndAsksToRephrase() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        UUID userId = newUser();
+        when(expenseExtractor.extract(eq("tomé un café"), anyList())).thenReturn(Optional.empty());
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, requestLinkCode.execute(userId).code());
+        assertThat(nextReplyText()).startsWith("Cuenta vinculada");
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "tomé un café");
+
+        assertThat(nextReplyText()).startsWith("No pude entender el gasto");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM expense WHERE user_id = ?", Integer.class, userId))
+                .isZero();
     }
 
     @Test

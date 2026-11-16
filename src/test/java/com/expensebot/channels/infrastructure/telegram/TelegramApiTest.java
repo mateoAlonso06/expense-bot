@@ -50,6 +50,14 @@ class TelegramApiTest {
     }
 
     @Test
+    void rejectsAPollingTimeoutTheReadTimeoutWouldCutShort() {
+        int tooLong = (int) TelegramApi.READ_TIMEOUT.toSeconds();
+
+        assertThatThrownBy(() -> api.getUpdates(0, tooLong)).isInstanceOf(IllegalArgumentException.class);
+        server.verify();
+    }
+
+    @Test
     void failsWhenTelegramAnswersOkFalse() {
         server.expect(requestTo(BASE + "/getUpdates?offset=0&timeout=30"))
                 .andRespond(withSuccess("{\"ok\": false}", MediaType.APPLICATION_JSON));

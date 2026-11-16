@@ -9,7 +9,9 @@ import java.util.Objects;
  * A message received from any channel, free of channel-specific types.
  *
  * @param eventId delivery id, unique across the whole channel (used to ignore redeliveries)
- * @param text    may be null when the message only carries attachments
+ * @param text    null or blank when the message has no text: it only carries attachments, or content the channel
+ *                adapter does not read (yet), such as a sticker or a photo not downloaded. Such a message still
+ *                reaches the application, so the user gets a reply instead of silence.
  */
 public record IncomingMessage(
         Channel channel,
@@ -26,8 +28,5 @@ public record IncomingMessage(
             throw new IllegalArgumentException("External user id and event id must not be blank");
         }
         attachments = attachments == null ? List.of() : List.copyOf(attachments);
-        if ((text == null || text.isBlank()) && attachments.isEmpty()) {
-            throw new IllegalArgumentException("A message needs text or at least one attachment");
-        }
     }
 }

@@ -2,7 +2,7 @@
 
 Expense-tracking bot. Users log expenses through Telegram (later WhatsApp) using natural language, receipt photos or voice notes. An AI agent extracts and categorizes them. A web panel (separate SPA) shows history, dashboards and limits. Portfolio project aimed at Backend + AI Engineering roles.
 
-Tracker: GitHub issues + project board `bills bot kanban` in `mateoAlonso06/bills-bot-spring` (27 issues, milestones MVP / v1 / v2). The issues hold the requirements and acceptance criteria; read the issue before implementing it.
+Tracker: GitHub issues + project board `bills bot kanban` in `mateoAlonso06/expense-bot` (27 issues, milestones MVP / v1 / v2). The issues hold the requirements and acceptance criteria; read the issue before implementing it.
 
 ## Working rules (highest priority)
 
@@ -43,7 +43,7 @@ Each module has `domain`, `application`, `infrastructure`.
 ## Development approach
 
 - Outside-in: write the use case (and its test) first; the domain entity grows from what the use case needs. Review invariants after each use case.
-- Domain objects are classes with a private constructor and static factory methods: `create(...)` for a new object (validates invariants, sets defaults) and `restore(...)` to rebuild one already stored (no validation, no side effects). Null checks use `Objects.requireNonNull` (NPE); invalid values throw `IllegalArgumentException`. No records for domain objects.
+- Domain objects are classes with a private constructor and static factory methods: `create(...)` for a new object (validates invariants, sets defaults) and `restore(...)` to rebuild one already stored (no validation, no side effects). Null checks use `Objects.requireNonNull` (NPE); invalid values throw `IllegalArgumentException`. No records for entities and aggregates (identity, `create`/`restore`). Value objects without identity (e.g. `Money`) are records: the compact constructor validates and normalizes, and equality is by value.
 - Domain model and persistence model are separate. Audit columns (`created_at`, `updated_at`) belong to persistence, not the domain.
 - Order of work follows the `Depends on` links in the issues. A data-model issue precedes the first table-creating issue.
 

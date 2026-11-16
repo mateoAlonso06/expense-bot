@@ -48,4 +48,17 @@ class CategoryPersistenceAdapterTest {
             assertThat(other.getName()).isEqualTo("Otros");
         });
     }
+
+    @Test
+    void findsACategoryById() {
+        assertThat(adapter.findById(Category.OTHER_ID)).get().satisfies(other -> {
+            assertThat(other.getName()).isEqualTo("Otros");
+            assertThat(other.isSystem()).isTrue();
+        });
+    }
+
+    @Test
+    void findsNothingForAnUnknownId() {
+        assertThat(adapter.findById(java.util.UUID.randomUUID())).isEmpty();
+    }
 }

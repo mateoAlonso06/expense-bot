@@ -56,12 +56,26 @@ class TelegramUpdateMapperTest {
     }
 
     @Test
-    void ignoresAMessageWithoutTextOrCaption() {
+    void mapsAMessageWithoutTextOrCaptionSoTheUserGetsAnAnswer() {
         var update = parse("""
                 {"update_id": 9004,
                  "message": {"message_id": 7, "from": {"id": 42}, "sticker": {"file_id": "s"}}}""");
 
-        assertThat(mapper.toIncomingMessage(update)).isEmpty();
+        assertThat(mapper.toIncomingMessage(update)).hasValueSatisfying(message -> {
+            assertThat(message.eventId()).isEqualTo("9004");
+            assertThat(message.text()).isNull();
+        });
+    }
+
+    @Test
+    void mapsAPhotoWithoutCaptionWithNoText() {
+        var update = parse("""
+                {"update_id": 9006,
+                 "message": {"message_id": 9, "from": {"id": 42},
+                             "photo": [{"file_id": "abc", "file_unique_id": "u", "width": 1, "height": 1}]}}""");
+
+        assertThat(mapper.toIncomingMessage(update))
+                .hasValueSatisfying(message -> assertThat(message.text()).isNull());
     }
 
     @Test

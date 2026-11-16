@@ -18,12 +18,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/** Only the routing: who is writing and where the message goes. What happens to an expense is tested elsewhere. */
 @ExtendWith(MockitoExtension.class)
 @Tag("mocks")
 class HandleIncomingMessageServiceTest {
@@ -31,6 +30,8 @@ class HandleIncomingMessageServiceTest {
     private LinkChannelIdentityUseCase linkChannelIdentity;
     @Mock
     private ResolveChannelIdentityUseCase resolveChannelIdentity;
+    @Mock
+    private RegisterExpenseFromText registerExpenseFromText;
     @Mock
     private ReplyService replyService;
     @InjectMocks
@@ -47,7 +48,7 @@ class HandleIncomingMessageServiceTest {
         service.execute(telegram("K7M4-9QXT"));
 
         verify(replyService).reply(Channel.TELEGRAM, "42", HandleIncomingMessageService.LINKED);
-        verifyNoInteractions(resolveChannelIdentity);
+        verifyNoInteractions(resolveChannelIdentity, registerExpenseFromText);
     }
 
     @Test
@@ -87,20 +88,36 @@ class HandleIncomingMessageServiceTest {
         service.execute(telegram("gasté 500"));
 
         verify(replyService).reply(Channel.TELEGRAM, "42", HandleIncomingMessageService.NOT_LINKED);
+        verifyNoInteractions(registerExpenseFromText);
     }
 
     @Test
-    void acknowledgesTheMessageOfALinkedUserOnTheChannelItCameFrom() {
+    void sendsTheMessageOfALinkedUserToTheExpenseFlowAndRepliesWithItsAnswer() {
+        UUID userId = UUID.randomUUID();
+        IncomingMessage message = telegram("gasté 500");
         when(linkChannelIdentity.execute(Channel.TELEGRAM, "42", "gasté 500")).thenReturn(LinkResult.NOT_A_CODE);
-        when(resolveChannelIdentity.execute(Channel.TELEGRAM, "42")).thenReturn(Optional.of(UUID.randomUUID()));
+        when(resolveChannelIdentity.execute(Channel.TELEGRAM, "42")).thenReturn(Optional.of(userId));
+        when(registerExpenseFromText.replyTo(userId, message)).thenReturn("Registré $500,00 en Otros (14/11/2026).");
+
+        service.execute(message);
+
+        verify(replyService).reply(Channel.TELEGRAM, "42", "Registré $500,00 en Otros (14/11/2026).");
+    }
+
+    @Test
+    void tellsTheUserToTryAgainWhenSomethingFailsInsteadOfLosingTheMessageSilently() {
+        when(linkChannelIdentity.execute(Channel.TELEGRAM, "42", "gasté 500")).thenReturn(LinkResult.NOT_A_CODE);
+        when(resolveChannelIdentity.execute(Channel.TELEGRAM, "42"))
+                .thenThrow(new IllegalStateException("database unavailable"));
 
         service.execute(telegram("gasté 500"));
 
-        verify(replyService).reply(Channel.TELEGRAM, "42", HandleIncomingMessageService.ACKNOWLEDGEMENT);
+        verify(replyService).reply(Channel.TELEGRAM, "42", RegisterExpenseFromText.TRY_AGAIN);
+        verifyNoInteractions(registerExpenseFromText);
     }
 
     @Test
-    void handlesAMessageThatOnlyCarriesAnAttachment() {
+    void asksAnUnlinkedUserToLinkEvenWhenTheMessageOnlyCarriesAnAttachment() {
         var photo = new Attachment(AttachmentType.IMAGE, "image/jpeg", new byte[]{1});
         var message = new IncomingMessage(Channel.TELEGRAM, "42", "101", null, List.of(photo));
         when(linkChannelIdentity.execute(Channel.TELEGRAM, "42", null)).thenReturn(LinkResult.NOT_A_CODE);
@@ -109,6 +126,6 @@ class HandleIncomingMessageServiceTest {
         service.execute(message);
 
         verify(replyService).reply(Channel.TELEGRAM, "42", HandleIncomingMessageService.NOT_LINKED);
-        verify(replyService, never()).reply(any(), any(), org.mockito.ArgumentMatchers.eq(HandleIncomingMessageService.ACKNOWLEDGEMENT));
+        verifyNoInteractions(registerExpenseFromText);
     }
 }

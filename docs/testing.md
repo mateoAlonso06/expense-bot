@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **240 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **257 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -21,7 +21,7 @@ Current state: **240 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 
 | # | Category | Tests | What it proves | Uses | Needs Docker |
 |---|---|---|---|---|---|
-| 1 | Domain / pure unit | 63 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
+| 1 | Domain / pure unit | 80 | Invariants and logic of plain objects: factories, validation, formatting, mapping, eval scoring | JUnit 5, AssertJ | No |
 | 2 | Unit with mocks | 75 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
 | 3 | HTTP client | 10 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
 | 4 | Web slice | 33 | Controllers, security rules (JWT, CORS, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
@@ -32,11 +32,11 @@ Current state: **240 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 | 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
 | 9 | LLM extraction | 14 | The real extractor reads fourteen sample messages, some with user-created categories (amount asserted; category and latency printed for review). **Opt-in and not part of any suite**: one call per message | `@SpringBootTest`, a real `OPENAI_API_KEY`, `@ParameterizedTest` | **Yes** |
 
-186 tests run without Docker; 54 need it.
+203 tests run without Docker; 54 need it.
 
 ## Where each test lives
 
-1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `MoneyTest`, `ExpenseTest`, `CategoryMatcherTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`.
+1. **Domain / pure unit:** `LinkCodeFormatTest`, `LinkCodeTest`, `ChannelIdentityTest`, `UserProfileTest`, `CategoryTest`, `MoneyTest`, `ExpenseTest`, `CategoryMatcherTest`, `IncomingMessageTest`, `TelegramUpdateMapperTest`, `ExtractionMetricsTest`, `ExtractionDatasetTest`.
 2. **Unit with mocks:** `ProvisionUserProfileServiceTest`, `RequestLinkCodeServiceTest`, `ResolveChannelIdentityServiceTest`, `ListCategoriesServiceTest`, `RegisterExpenseServiceTest`, `EditExpenseServiceTest`, `SpringAiExpenseExtractorTest`, `IncomingMessageGatewayTest`, `HandleIncomingMessageServiceTest`, `RegisterExpenseFromTextTest`, `ReplyServiceTest`, `TelegramReplySenderTest`, `TelegramPollerTest`, `TelegramPollingRunnerTest`, `TelegramWebhookRegistrarTest`.
 3. **HTTP client:** `TelegramApiTest`.
 4. **Web slice:** `UserProvisioningFilterTest`, `TelegramWebhookControllerTest`, `TelegramWebhookWithoutSecretTest`, `JwtAuthenticationTest`, `CorsTest`, `CategoryControllerTest`, `ExpenseControllerTest`, `LinkCodeControllerTest`.

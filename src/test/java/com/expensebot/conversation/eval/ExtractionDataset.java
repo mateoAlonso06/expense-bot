@@ -85,7 +85,8 @@ public record ExtractionDataset(List<ExtractionCase> cases, String version) {
         return new IllegalArgumentException("Invalid dataset line " + lineNumber + ": " + reason);
     }
 
-    private static String shortHash(byte[] content) {
+    /** First 8 hex characters of the SHA-256 of {@code content}: short enough for names, long enough to differ. */
+    static String shortHash(byte[] content) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(content);
             return HexFormat.of().formatHex(digest).substring(0, 8);

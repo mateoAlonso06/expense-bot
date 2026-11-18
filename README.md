@@ -114,3 +114,26 @@ docker compose up -d keycloak
 ```
 
 `ArchitectureTest` enforces the hexagonal module rules.
+
+## Extraction eval
+
+The LLM extractor is measured against a labeled dataset, so a prompt or model change can be compared with the numbers before it. Run it before and after any change to `SpringAiExpenseExtractor`.
+
+- `eval/extraction/dataset.jsonl`: the labeled messages (expected amount, description and category, plus tags such as `slang` or `brand`). One JSON object per line.
+- `eval/extraction/HISTORY.md`: one row per recorded run. Compare rows only when the dataset version is the same.
+- `eval/extraction/runs/<date>_<time>_<model>_<extractor>/`: `report.md` (summary, per tag, failed cases) and `report.json` of each recorded run.
+
+It makes one real OpenAI call per case (it costs tokens) and needs `OPENAI_API_KEY`, but no Docker:
+
+```bash
+set -a && . ./.env && set +a
+RUN_LLM_TESTS=true ./mvnw test -Dtest=ExtractionEval
+```
+
+The report is written to `target/eval/`. To keep a run in the history (a baseline, or the run that goes with a prompt change), add `EVAL_RECORD=true` and say why in `EVAL_NOTE`:
+
+```bash
+RUN_LLM_TESTS=true EVAL_RECORD=true EVAL_NOTE="Shorter category rules" ./mvnw test -Dtest=ExtractionEval
+```
+
+With temperature 0 the model is almost, not fully, deterministic: two identical runs can differ by a case or two.

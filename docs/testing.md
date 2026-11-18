@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **233 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **235 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -24,7 +24,7 @@ Current state: **233 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 | 1 | Domain / pure unit | 63 | Invariants and logic of plain objects: factories, validation, formatting, mapping | JUnit 5, AssertJ | No |
 | 2 | Unit with mocks | 75 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
 | 3 | HTTP client | 10 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
-| 4 | Web slice | 26 | Controllers, security rules (JWT, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
+| 4 | Web slice | 28 | Controllers, security rules (JWT, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
 | 5 | Persistence slice | 46 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
 | 6 | Architecture | 5 | Module and layer rules are not broken (domain has no Spring, application does not touch infrastructure, ...) | ArchUnit (`@ArchTest`) | No |
 | 7 | Flow | 6 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
@@ -32,7 +32,7 @@ Current state: **233 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 | 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
 | 9 | LLM extraction | 14 | The real extractor reads fourteen sample messages, some with user-created categories (amount asserted; category and latency printed for review). **Opt-in and not part of any suite**: one call per message | `@SpringBootTest`, a real `OPENAI_API_KEY`, `@ParameterizedTest` | **Yes** |
 
-179 tests run without Docker; 54 need it.
+181 tests run without Docker; 54 need it.
 
 ## Where each test lives
 

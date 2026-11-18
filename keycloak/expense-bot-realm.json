@@ -694,7 +694,8 @@
         "profile",
         "roles",
         "basic",
-        "email"
+        "email",
+        "expense-bot-api"
       ],
       "optionalClientScopes": [
         "address",
@@ -703,6 +704,41 @@
         "offline_access",
         "microprofile-jwt"
       ]
+    },
+    {
+      "id": "36342190-1127-48ee-829c-7356e18b8013",
+      "clientId": "expense-bot-cli",
+      "name": "client-cli",
+      "description": "Local development only: password grant for curl. Never create this client in a production realm.",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [],
+      "webOrigins": [],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false"
+      },
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email",
+        "roles",
+        "expense-bot-api"
+      ],
+      "optionalClientScopes": []
     },
     {
       "id": "b95cbd41-9467-4937-ad5e-93d0aaca7bf2",
@@ -1518,6 +1554,31 @@
             "claim.name": "realm_access.roles",
             "jsonType.label": "String",
             "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3c439494-879c-4060-9021-43d136e833cb",
+      "name": "expense-bot-api",
+      "description": "Adds the expense-bot API to the audience (aud) of access tokens",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "id": "0f4ec65b-b4ac-4b52-883b-6eb5dcdf00e8",
+          "name": "expense-bot-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "expense-bot-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
           }
         }
       ]

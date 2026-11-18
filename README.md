@@ -48,6 +48,9 @@ Secrets are never committed. `.env` is ignored by git.
 | `TELEGRAM_BOT_TOKEN` | app | none | Bot token from BotFather. Required in both modes (polling reads updates with it, webhook registration calls the Bot API with it) |
 | `TELEGRAM_WEBHOOK_URL` | app | none | Public HTTPS base URL of the app (webhook mode only) |
 | `TELEGRAM_WEBHOOK_SECRET` | app | none | Shared secret Telegram sends in a header with every webhook call. 1-256 characters: letters, digits, `_` and `-` |
+| `KEYCLOAK_ISSUER_URI` | app | `http://localhost:8081/realms/expense-bot` | Realm whose tokens the API accepts (`iss` claim) |
+| `KEYCLOAK_API_AUDIENCE` | app | `expense-bot-api` | Audience the API requires in tokens (`aud` claim) |
+| `CORS_ALLOWED_ORIGINS` | app | `http://localhost:5173` | Comma-separated origins (scheme + host + port) of the web panel allowed to call the API from the browser |
 | `KEYCLOAK_ADMIN` | compose | `admin` | Keycloak admin user (local only) |
 | `KEYCLOAK_ADMIN_PASSWORD` | compose | `admin` | Keycloak admin password (local only) |
 | `GOOGLE_CLIENT_ID` | compose | none (required) | Google OAuth client ID used by Keycloak |
@@ -71,6 +74,8 @@ For now, received messages are only logged: the agent that handles them is a lat
 Keycloak runs at `http://localhost:8081`. On startup it imports the `expense-bot` realm from `keycloak/expense-bot-realm.json` if the realm does not exist yet. The realm contains:
 
 - A public client `expense-bot-web` (Authorization Code + PKCE) for the SPA, with `http://localhost:5173` as redirect URI and web origin.
+- A client scope `expense-bot-api` that adds `expense-bot-api` to the `aud` claim of access tokens. It is a default scope of `expense-bot-web` and `expense-bot-cli`.
+- A public client `expense-bot-cli` with the password grant, to get tokens with `curl` during local development. **Local only:** never create it in a production realm. The password grant hands the user's password to the client and OAuth 2.1 removes it.
 - Google as an identity provider, configured through `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 To get the Google credentials, create an OAuth client (type *Web application*) in Google Cloud Console with this authorized redirect URI:
@@ -79,13 +84,26 @@ To get the Google credentials, create an OAuth client (type *Web application*) i
 http://localhost:8081/realms/expense-bot/broker/google/endpoint
 ```
 
-The API validates tokens against `http://localhost:8081/realms/expense-bot`.
+The API accepts a token only if it was issued by `http://localhost:8081/realms/expense-bot` and its `aud` claim contains `expense-bot-api`. Tokens minted for other clients of the realm (for example `admin-cli`) answer 401.
+
+### Getting a token for local testing
+
+The realm has no users. Create one in the admin console (`http://localhost:8081/admin`, realm `expense-bot` → *Users* → *Create user*, with an email), then set a non-temporary password in its *Credentials* tab. Users who sign in with Google have no password and cannot use this flow.
+
+```bash
+TOKEN=$(curl -s http://localhost:8081/realms/expense-bot/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=expense-bot-cli \
+  -d username=<user> -d password=<password> \
+  | sed -E 's/.*"access_token":"([^"]+)".*/\1/')
+
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/categories
+```
 
 To re-import the realm, remove only the Keycloak volume (do not use `docker compose down -v`, which also deletes Postgres data):
 
 ```bash
 docker compose rm -sf keycloak
-docker volume rm bills-bot_keycloak-data
+docker volume rm expense-bot_keycloak-data
 docker compose up -d keycloak
 ```
 

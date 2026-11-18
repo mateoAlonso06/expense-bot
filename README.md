@@ -50,6 +50,7 @@ Secrets are never committed. `.env` is ignored by git.
 | `TELEGRAM_WEBHOOK_SECRET` | app | none | Shared secret Telegram sends in a header with every webhook call. 1-256 characters: letters, digits, `_` and `-` |
 | `KEYCLOAK_ISSUER_URI` | app | `http://localhost:8081/realms/expense-bot` | Realm whose tokens the API accepts (`iss` claim) |
 | `KEYCLOAK_API_AUDIENCE` | app | `expense-bot-api` | Audience the API requires in tokens (`aud` claim) |
+| `CORS_ALLOWED_ORIGINS` | app | `http://localhost:5173` | Comma-separated origins (scheme + host + port) of the web panel allowed to call the API from the browser |
 | `KEYCLOAK_ADMIN` | compose | `admin` | Keycloak admin user (local only) |
 | `KEYCLOAK_ADMIN_PASSWORD` | compose | `admin` | Keycloak admin password (local only) |
 | `GOOGLE_CLIENT_ID` | compose | none (required) | Google OAuth client ID used by Keycloak |

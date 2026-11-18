@@ -34,6 +34,10 @@ spring:
         # extraction should be repeatable: the same message gives the same answer
         temperature: 0.0
 
+cors:
+  # origins (scheme + host + port) whose browser pages may call the API, comma-separated
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 accounts:
   link-code:
     # how long a link code stays valid

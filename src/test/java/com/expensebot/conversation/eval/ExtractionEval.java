@@ -3,6 +3,7 @@ package com.expensebot.conversation.eval;
 import com.expensebot.conversation.application.EvalCategoryResolver;
 import com.expensebot.conversation.application.ExpenseDraft;
 import com.expensebot.conversation.application.ExpenseExtractor;
+import com.expensebot.conversation.application.Extraction;
 import com.expensebot.conversation.infrastructure.llm.SpringAiExpenseExtractor;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -71,7 +72,10 @@ class ExtractionEval {
         List<ExtractionOutcome> outcomes = new ArrayList<>();
         for (ExtractionCase c : dataset.cases()) {
             long start = System.nanoTime();
-            Optional<ExpenseDraft> draft = extractor.extract(c.message(), c.offeredCategories());
+            // Until the dataset knows missing and ambiguous amounts (next phase), anything but Found is "no expense".
+            Extraction extraction = extractor.extract(c.message(), c.offeredCategories());
+            Optional<ExpenseDraft> draft = extraction instanceof Extraction.Found(ExpenseDraft read)
+                    ? Optional.of(read) : Optional.empty();
             long millis = (System.nanoTime() - start) / 1_000_000;
             String resolved = draft.map(d -> EvalCategoryResolver.resolve(d.categoryName(), c.offeredCategories(),
                     ExtractionCase.OTHER)).orElse(null);

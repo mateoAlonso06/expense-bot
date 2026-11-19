@@ -2,6 +2,7 @@ package com.expensebot;
 
 import com.expensebot.accounts.RequestLinkCodeUseCase;
 import com.expensebot.conversation.application.ExpenseDraft;
+import com.expensebot.conversation.application.Extraction;
 import com.expensebot.conversation.application.ExpenseExtractor;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
@@ -26,7 +27,6 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -109,7 +109,7 @@ class TelegramReplyFlowTest {
         String code = requestLinkCode.execute(userId).code();
         // The model is replaced: the CI has no API key. The category name comes back without its accent on purpose.
         when(expenseExtractor.extract(eq("gasté 500 en el super"), anyList()))
-                .thenReturn(Optional.of(new ExpenseDraft(new BigDecimal("500"), "súper", "alimentacion")));
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("500"), "súper", "alimentacion")));
 
         postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, code);
         assertThat(nextReplyText()).startsWith("Cuenta vinculada");
@@ -126,7 +126,7 @@ class TelegramReplyFlowTest {
     void aMessageWithoutAnAmountStoresNothingAndAsksToRephrase() throws Exception {
         long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
         UUID userId = newUser();
-        when(expenseExtractor.extract(eq("tomé un café"), anyList())).thenReturn(Optional.empty());
+        when(expenseExtractor.extract(eq("tomé un café"), anyList())).thenReturn(new Extraction.MissingAmount(null, null));
         postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, requestLinkCode.execute(userId).code());
         assertThat(nextReplyText()).startsWith("Cuenta vinculada");
 

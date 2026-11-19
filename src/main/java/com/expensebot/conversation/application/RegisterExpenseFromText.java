@@ -14,7 +14,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -58,19 +57,19 @@ class RegisterExpenseFromText {
         }
 
         List<CategoryView> categories = listCategories.execute();
-        Optional<ExpenseDraft> draft;
+        Extraction extraction;
         try {
-            draft = expenseExtractor.extract(text, categories.stream().map(CategoryView::name).toList());
+            extraction = expenseExtractor.extract(text, categories.stream().map(CategoryView::name).toList());
         } catch (RuntimeException e) {
             // The provider failed (key, network, rate limit).
             log.error("The expense extractor failed channel={} eventId={}", message.channel(), message.eventId(), e);
             return TRY_AGAIN;
         }
-        if (draft.isEmpty()) {
+        // A missing or ambiguous amount still gets the old reply: asking for it comes in a later phase of #11.
+        if (!(extraction instanceof Extraction.Found(ExpenseDraft read))) {
             return REPHRASE;
         }
 
-        ExpenseDraft read = draft.get();
         UUID categoryId = CategoryMatcher.match(read.categoryName(), categories).orElse(null);
         try {
             RegisteredExpense stored = registerExpense.execute(new RegisterExpenseCommand(userId, read.amount(),

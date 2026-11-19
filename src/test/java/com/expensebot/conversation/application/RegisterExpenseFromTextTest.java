@@ -20,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,7 +60,7 @@ class RegisterExpenseFromTextTest {
     void storesWhatTheModelReadAndAnswersWithASummary() {
         when(listCategories.execute()).thenReturn(CATALOG);
         when(expenseExtractor.extract("$15.000 carnicería", List.of("Alimentación", "Otros")))
-                .thenReturn(Optional.of(new ExpenseDraft(new BigDecimal("15000"), "carnicería", "alimentacion")));
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("15000"), "carnicería", "alimentacion")));
         when(registerExpense.execute(any())).thenReturn(new RegisteredExpense(UUID.randomUUID(),
                 new BigDecimal("15000.00"), "ARS", "carnicería", "Alimentación", LocalDate.of(2026, 11, 14)));
 
@@ -82,7 +81,7 @@ class RegisterExpenseFromTextTest {
     void leavesTheCategoryEmptyWhenTheModelNamedOneThatIsNotInTheCatalog() {
         when(listCategories.execute()).thenReturn(CATALOG);
         when(expenseExtractor.extract(any(), any()))
-                .thenReturn(Optional.of(new ExpenseDraft(new BigDecimal("500"), null, "Inventada")));
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("500"), null, "Inventada")));
         when(registerExpense.execute(any())).thenReturn(new RegisteredExpense(UUID.randomUUID(),
                 new BigDecimal("500.00"), "ARS", null, "Otros", LocalDate.of(2026, 11, 14)));
 
@@ -94,7 +93,7 @@ class RegisterExpenseFromTextTest {
     @Test
     void asksToRephraseAndStoresNothingWhenNoAmountWasRead() {
         when(listCategories.execute()).thenReturn(CATALOG);
-        when(expenseExtractor.extract(any(), any())).thenReturn(Optional.empty());
+        when(expenseExtractor.extract(any(), any())).thenReturn(new Extraction.MissingAmount(null, null));
 
         assertThat(registerExpenseFromText.replyTo(USER_ID, telegram("tomé un café")))
                 .isEqualTo(RegisterExpenseFromText.REPHRASE);
@@ -105,7 +104,7 @@ class RegisterExpenseFromTextTest {
     void asksToRephraseWhenTheExpenseRulesRejectWhatTheModelRead() {
         when(listCategories.execute()).thenReturn(CATALOG);
         when(expenseExtractor.extract(any(), any()))
-                .thenReturn(Optional.of(new ExpenseDraft(BigDecimal.ZERO, null, null)));
+                .thenReturn(new Extraction.Found(new ExpenseDraft(BigDecimal.ZERO, null, null)));
         when(registerExpense.execute(any())).thenThrow(new IllegalArgumentException("Amount must be positive"));
 
         assertThat(registerExpenseFromText.replyTo(USER_ID, telegram("gasté 0")))

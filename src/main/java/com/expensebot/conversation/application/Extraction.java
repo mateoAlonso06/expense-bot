@@ -12,7 +12,9 @@ import java.util.Objects;
  */
 public sealed interface Extraction {
 
-    /** A clear amount: the expense can be stored. */
+    /**
+     * A clear amount: the expense can be stored.
+     */
     record Found(ExpenseDraft draft) implements Extraction {
         public Found {
             Objects.requireNonNull(draft, "Draft is required");
@@ -43,7 +45,9 @@ public sealed interface Extraction {
         }
     }
 
-    /** The model did not answer in the expected format, so nothing can be read from it. */
+    /**
+     * The model did not answer in the expected format, so nothing can be read from it.
+     */
     record Unreadable() implements Extraction {
     }
 }

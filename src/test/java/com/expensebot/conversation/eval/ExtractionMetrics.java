@@ -8,8 +8,9 @@ import java.util.function.Predicate;
 /**
  * The numbers of one eval run.
  *
- * @param amount        right amount (or rightly no expense) over every case
- * @param category      right category over the cases that should produce an expense
+ * @param amount        right amount outcome over every case: same amount, same candidates, asking for the amount, or
+ *                      asking to rephrase, as the case expects
+ * @param category      right category over the cases that expect one
  * @param otherFallback cases that got {@code Other} over the cases that expect another category; lower is better
  * @param byTag         amount and category per tag, sorted by tag name
  * @param failures      cases with a wrong amount or category, in dataset order
@@ -18,8 +19,8 @@ public record ExtractionMetrics(int cases, Rate amount, Rate category, Rate othe
                                 Map<String, TagMetrics> byTag, List<ExtractionOutcome> failures) {
 
     public static ExtractionMetrics score(List<ExtractionOutcome> outcomes) {
-        List<ExtractionOutcome> withExpense = outcomes.stream().filter(o -> o.expected().expectsExpense()).toList();
-        List<ExtractionOutcome> expectingNonOther = withExpense.stream()
+        List<ExtractionOutcome> withCategory = outcomes.stream().filter(o -> o.expected().category() != null).toList();
+        List<ExtractionOutcome> expectingNonOther = withCategory.stream()
                 .filter(o -> !ExtractionCase.OTHER.equals(o.expected().category()))
                 .toList();
 
@@ -33,14 +34,14 @@ public record ExtractionMetrics(int cases, Rate amount, Rate category, Rate othe
                             .toList();
                     byTag.put(tag, new TagMetrics(
                             Rate.of(tagged, ExtractionOutcome::amountCorrect),
-                            Rate.of(tagged.stream().filter(o -> o.expected().expectsExpense()).toList(),
+                            Rate.of(tagged.stream().filter(o -> o.expected().category() != null).toList(),
                                     ExtractionOutcome::categoryCorrect)));
                 });
 
         return new ExtractionMetrics(
                 outcomes.size(),
                 Rate.of(outcomes, ExtractionOutcome::amountCorrect),
-                Rate.of(withExpense, ExtractionOutcome::categoryCorrect),
+                Rate.of(withCategory, ExtractionOutcome::categoryCorrect),
                 Rate.of(expectingNonOther, ExtractionOutcome::fellBackToOther),
                 byTag,
                 outcomes.stream().filter(ExtractionOutcome::failed).toList());
@@ -64,7 +65,7 @@ public record ExtractionMetrics(int cases, Rate amount, Rate category, Rate othe
         }
     }
 
-    /** @param category n/a when no case of the tag expects an expense */
+    /** @param category n/a when no case of the tag expects a category */
     public record TagMetrics(Rate amount, Rate category) {
     }
 }

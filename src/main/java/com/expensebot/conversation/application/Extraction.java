@@ -13,11 +13,22 @@ import java.util.Objects;
 public sealed interface Extraction {
 
     /**
+     * The message says what was bought. While the bot waits for an answer, such a message is a new expense of its own,
+     * not the answer.
+     */
+    boolean describesAPurchase();
+
+    /**
      * A clear amount: the expense can be stored.
      */
     record Found(ExpenseDraft draft) implements Extraction {
         public Found {
             Objects.requireNonNull(draft, "Draft is required");
+        }
+
+        @Override
+        public boolean describesAPurchase() {
+            return draft.description() != null;
         }
     }
 
@@ -28,6 +39,11 @@ public sealed interface Extraction {
      * @param categoryName the category the model picked, or null
      */
     record MissingAmount(String description, String categoryName) implements Extraction {
+
+        @Override
+        public boolean describesAPurchase() {
+            return description != null;
+        }
     }
 
     /**
@@ -43,11 +59,21 @@ public sealed interface Extraction {
                 throw new IllegalArgumentException("An ambiguous amount needs at least two candidates");
             }
         }
+
+        @Override
+        public boolean describesAPurchase() {
+            return description != null;
+        }
     }
 
     /**
      * The model did not answer in the expected format, so nothing can be read from it.
      */
     record Unreadable() implements Extraction {
+
+        @Override
+        public boolean describesAPurchase() {
+            return false;
+        }
     }
 }

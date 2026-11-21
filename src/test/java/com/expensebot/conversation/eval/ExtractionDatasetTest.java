@@ -29,7 +29,7 @@ class ExtractionDatasetTest {
         ExtractionDataset dataset = ExtractionDataset.load(DATASET);
 
         assertThat(dataset.cases()).hasSizeGreaterThanOrEqualTo(30);
-        assertThat(dataset.cases()).anyMatch(c -> !c.expectsExpense());
+        assertThat(dataset.cases()).extracting(ExtractionCase::kind).contains(ExtractionCase.Kind.values());
         assertThat(dataset.cases()).anyMatch(c -> !c.extraCategories().isEmpty());
         assertThat(dataset.cases()).allMatch(c -> !c.tags().isEmpty());
     }
@@ -40,14 +40,18 @@ class ExtractionDatasetTest {
                 "{\"id\":\"a\",\"message\":\"steam 5000\",\"amount\":\"5000\",\"category\":\"Juegos\","
                         + "\"extraCategories\":[\"Juegos\"],\"tags\":[\"custom-category\"]}",
                 "",
-                "{\"id\":\"b\",\"message\":\"tomé un café\",\"amount\":null,\"category\":null}"));
+                "{\"id\":\"b\",\"message\":\"hola\",\"amount\":null,\"category\":null}",
+                "{\"id\":\"c\",\"message\":\"tomé un café\",\"description\":\"café\"}",
+                "{\"id\":\"d\",\"message\":\"5000 o 3000\",\"amountCandidates\":[\"5000\",\"3000\"],"
+                        + "\"category\":\"Otros\"}"));
 
-        assertThat(dataset.cases()).hasSize(2);
+        assertThat(dataset.cases()).extracting(ExtractionCase::kind).containsExactly(ExtractionCase.Kind.FOUND,
+                ExtractionCase.Kind.NOT_AN_EXPENSE, ExtractionCase.Kind.ASK_AMOUNT, ExtractionCase.Kind.AMBIGUOUS);
         ExtractionCase first = dataset.cases().getFirst();
         assertThat(first.amount()).isEqualByComparingTo(new BigDecimal("5000"));
         assertThat(first.offeredCategories()).endsWith("Juegos").contains("Otros");
-        assertThat(dataset.cases().get(1).expectsExpense()).isFalse();
         assertThat(dataset.cases().get(1).tags()).isEmpty();
+        assertThat(dataset.cases().get(3).amountCandidates()).hasSize(2);
     }
 
     @Test
@@ -86,11 +90,29 @@ class ExtractionDatasetTest {
     }
 
     @Test
-    void rejectsACategoryWithoutAmount() throws IOException {
-        Path dataset = file("{\"id\":\"a\",\"message\":\"luz\",\"amount\":null,\"category\":\"Servicios\"}");
+    void rejectsACategoryForAMessageThatIsNotAnExpense() throws IOException {
+        Path dataset = file("{\"id\":\"a\",\"message\":\"hola\",\"amount\":null,\"category\":\"Servicios\"}");
 
         assertThatThrownBy(() -> ExtractionDataset.load(dataset))
-                .hasMessageContaining("without amount");
+                .hasMessageContaining("not an expense");
+    }
+
+    @Test
+    void rejectsAnAmountTogetherWithCandidates() throws IOException {
+        Path dataset = file("{\"id\":\"a\",\"message\":\"5000 o 3000\",\"amount\":\"5000\","
+                + "\"amountCandidates\":[\"5000\",\"3000\"],\"category\":\"Otros\"}");
+
+        assertThatThrownBy(() -> ExtractionDataset.load(dataset))
+                .hasMessageContaining("exclude each other");
+    }
+
+    @Test
+    void rejectsFewerThanTwoDistinctCandidates() throws IOException {
+        Path dataset = file("{\"id\":\"a\",\"message\":\"5000 o 5000\","
+                + "\"amountCandidates\":[\"5000\",\"5000.00\"],\"category\":\"Otros\"}");
+
+        assertThatThrownBy(() -> ExtractionDataset.load(dataset))
+                .hasMessageContaining("two or more distinct positive amounts");
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.expensebot.conversation.eval;
 
-import com.expensebot.conversation.application.ExpenseDraft;
+import com.expensebot.conversation.application.Extraction;
 import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -14,8 +14,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.math.BigDecimal;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.Optional;
 
 /**
  * Writes one eval run as {@code report.md} (to read) and {@code report.json} (to compare with code), and appends its
@@ -106,10 +107,11 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
         md.append("| Other fallback (lower is better) | ").append(metrics.otherFallback()).append(" |\n");
         md.append("| Latency | avg ").append(averageLatency()).append(" ms, max ").append(maxLatency())
                 .append(" ms |\n\n");
-        md.append("- **Amount**: the right amount, or no expense when the message has none, over every case.\n");
+        md.append("- **Amount**: over every case, the answer leads to what the bot should do: the right amount, ")
+                .append("the right candidates when the message has several, a question for the amount when it ")
+                .append("says what was bought but not how much, or a request to rephrase when it says neither.\n");
         md.append("- **Category**: the category the user ends up with (the model's answer resolved like the app ")
-                .append("does; unknown names become `Otros`), over the cases that should produce an expense. ")
-                .append("A missed expense counts as a wrong category.\n");
+                .append("does; unknown names become `Otros`), over the cases that expect one.\n");
         md.append("- **Other fallback**: cases that got `Otros` although they expect another category.\n");
         md.append("- With temperature 0 the model is almost, not fully, deterministic: two identical runs can ")
                 .append("differ by a case or two.\n");
@@ -130,14 +132,13 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
         }
 
         md.append("\n## All cases\n\n<details>\n<summary>").append(outcomes.size())
-                .append(" cases</summary>\n\n| | Case | Message | Amount | Category | Description | ms |\n")
+                .append(" cases</summary>\n\n| | Case | Message | Read | Category | Description | ms |\n")
                 .append("|---|---|---|---|---|---|---|\n");
         outcomes.forEach(o -> md.append("| ").append(o.failed() ? "✗" : "✓").append(" | ")
                 .append(o.expected().id()).append(" | ").append(cell(o.expected().message())).append(" | ")
-                .append(o.actual() == null ? "-" : o.actual().amount().toPlainString()).append(" | ")
+                .append(readAmount(o.actual())).append(" | ")
                 .append(o.resolvedCategory() == null ? "-" : o.resolvedCategory()).append(" | ")
-                .append(o.actual() == null || o.actual().description() == null ? "-"
-                        : cell(o.actual().description())).append(" | ")
+                .append(description(o.actual()).map(ExtractionReport::cell).orElse("-")).append(" | ")
                 .append(o.latencyMillis()).append(" |\n"));
         md.append("\n</details>\n");
         return md.toString();
@@ -176,18 +177,23 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
         c.put("message", o.expected().message());
         c.put("tags", o.expected().tags());
         Map<String, Object> expected = new LinkedHashMap<>();
+        expected.put("kind", o.expected().kind().name());
         expected.put("amount", o.expected().amount() == null ? null : o.expected().amount().toPlainString());
+        expected.put("amountCandidates", plain(o.expected().amountCandidates()));
         expected.put("description", o.expected().description());
         expected.put("category", o.expected().category());
         c.put("expected", expected);
         Map<String, Object> actual = new LinkedHashMap<>();
-        actual.put("amount", value(o.actual(), d -> d.amount().toPlainString()));
-        actual.put("description", value(o.actual(), ExpenseDraft::description));
-        actual.put("modelCategory", value(o.actual(), ExpenseDraft::categoryName));
+        actual.put("kind", o.actual().getClass().getSimpleName());
+        actual.put("amount", o.actual() instanceof Extraction.Found(var draft) ? draft.amount().toPlainString() : null);
+        actual.put("amountCandidates", o.actual() instanceof Extraction.AmbiguousAmount a
+                ? plain(a.candidates()) : List.of());
+        actual.put("description", description(o.actual()).orElse(null));
+        actual.put("modelCategory", modelCategory(o.actual()).orElse(null));
         actual.put("resolvedCategory", o.resolvedCategory());
         c.put("actual", actual);
         c.put("amountCorrect", o.amountCorrect());
-        c.put("categoryCorrect", o.expected().expectsExpense() ? o.categoryCorrect() : null);
+        c.put("categoryCorrect", o.expected().category() != null ? o.categoryCorrect() : null);
         c.put("latencyMillis", o.latencyMillis());
         return c;
     }
@@ -200,8 +206,38 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
         return r;
     }
 
-    private static <T> T value(ExpenseDraft draft, Function<ExpenseDraft, T> field) {
-        return draft == null ? null : field.apply(draft);
+    /** The category name the model wrote, whatever the kind of answer. */
+    static Optional<String> modelCategory(Extraction extraction) {
+        return Optional.ofNullable(switch (extraction) {
+            case Extraction.Found(var draft) -> draft.categoryName();
+            case Extraction.MissingAmount(var description, var category) -> category;
+            case Extraction.AmbiguousAmount ambiguous -> ambiguous.categoryName();
+            case Extraction.Unreadable() -> null;
+        });
+    }
+
+    private static Optional<String> description(Extraction extraction) {
+        return Optional.ofNullable(switch (extraction) {
+            case Extraction.Found(var draft) -> draft.description();
+            case Extraction.MissingAmount(var description, var category) -> description;
+            case Extraction.AmbiguousAmount ambiguous -> ambiguous.description();
+            case Extraction.Unreadable() -> null;
+        });
+    }
+
+    /** The amount part of an answer, as the bot would act on it. */
+    private static String readAmount(Extraction extraction) {
+        return switch (extraction) {
+            case Extraction.Found(var draft) -> draft.amount().toPlainString();
+            case Extraction.AmbiguousAmount ambiguous -> String.join(" or ", plain(ambiguous.candidates()));
+            case Extraction.MissingAmount(var description, var category) ->
+                    description == null ? "not an expense" : "ask amount";
+            case Extraction.Unreadable() -> "unreadable answer";
+        };
+    }
+
+    private static List<String> plain(List<BigDecimal> amounts) {
+        return amounts.stream().map(BigDecimal::toPlainString).toList();
     }
 
     private static String percent(ExtractionMetrics.Rate rate) {
@@ -209,18 +245,23 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
     }
 
     private static String expected(ExtractionOutcome o) {
-        if (!o.expected().expectsExpense()) {
-            return "no expense";
-        }
-        return o.expected().amount().toPlainString() + " · " + o.expected().category();
+        ExtractionCase c = o.expected();
+        String amount = switch (c.kind()) {
+            case FOUND -> c.amount().toPlainString();
+            case AMBIGUOUS -> String.join(" or ", plain(c.amountCandidates()));
+            case ASK_AMOUNT -> "ask amount";
+            case NOT_AN_EXPENSE -> "not an expense";
+        };
+        return c.category() == null ? amount : amount + " · " + c.category();
     }
 
     private static String got(ExtractionOutcome o) {
-        if (o.actual() == null) {
-            return "no expense";
+        String amount = readAmount(o.actual());
+        if (o.resolvedCategory() == null || o.expected().category() == null) {
+            return amount;
         }
-        String got = o.actual().amount().toPlainString() + " · " + o.resolvedCategory();
-        String modelCategory = o.actual().categoryName();
+        String got = amount + " · " + o.resolvedCategory();
+        String modelCategory = modelCategory(o.actual()).orElse(null);
         if (modelCategory == null) {
             return got + " (model: no category)";
         }

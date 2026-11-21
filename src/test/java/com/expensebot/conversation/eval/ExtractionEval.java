@@ -1,8 +1,8 @@
 package com.expensebot.conversation.eval;
 
 import com.expensebot.conversation.application.EvalCategoryResolver;
-import com.expensebot.conversation.application.ExpenseDraft;
 import com.expensebot.conversation.application.ExpenseExtractor;
+import com.expensebot.conversation.application.Extraction;
 import com.expensebot.conversation.infrastructure.llm.SpringAiExpenseExtractor;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,6 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -71,11 +70,12 @@ class ExtractionEval {
         List<ExtractionOutcome> outcomes = new ArrayList<>();
         for (ExtractionCase c : dataset.cases()) {
             long start = System.nanoTime();
-            Optional<ExpenseDraft> draft = extractor.extract(c.message(), c.offeredCategories());
+            Extraction extraction = extractor.extract(c.message(), c.offeredCategories());
             long millis = (System.nanoTime() - start) / 1_000_000;
-            String resolved = draft.map(d -> EvalCategoryResolver.resolve(d.categoryName(), c.offeredCategories(),
-                    ExtractionCase.OTHER)).orElse(null);
-            outcomes.add(new ExtractionOutcome(c, draft.orElse(null), resolved, millis));
+            String resolved = ExtractionReport.modelCategory(extraction)
+                    .map(name -> EvalCategoryResolver.resolve(name, c.offeredCategories(), ExtractionCase.OTHER))
+                    .orElse(extraction instanceof Extraction.Unreadable ? null : ExtractionCase.OTHER);
+            outcomes.add(new ExtractionOutcome(c, extraction, resolved, millis));
         }
 
         // The options the model really runs with, not what application.yaml was meant to say.

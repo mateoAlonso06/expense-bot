@@ -2,6 +2,7 @@ package com.expensebot.conversation.infrastructure.llm;
 
 import com.expensebot.conversation.application.ExpenseDraft;
 import com.expensebot.conversation.application.ExpenseExtractor;
+import com.expensebot.conversation.application.Extraction;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -9,13 +10,13 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Reads an expense from a message with an LLM, through Spring AI's {@code ChatClient}. The model only extracts: this
- * class does not store anything and does not decide anything about the result beyond "was there an amount".
+ * class does not store anything and only reports what was read (an amount, a missing one, or several candidates).
  */
 @Slf4j
 @Component
@@ -29,6 +30,9 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
             Rules:
             - Extract only what the message says. Never invent an amount or a description.
             - If the message has no amount, the amount is null.
+            - If the message has two or more amounts and does not say which one was spent (for example "5000 o \
+            3000"), the amount is null and amountCandidates lists every one of them. If the user corrects an amount \
+            ("5000, perdón, 6000"), that is not a doubt: the amount is the corrected one and amountCandidates is empty.
             - The description is what was bought or paid for, short, without the amount or verbs like "gasté".
             - The category is the one from the "Categories" line that best matches what the money was spent on. Use \
             common knowledge about stores, brands and services to decide. It must be exactly one of the listed names.
@@ -45,7 +49,7 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
     }
 
     @Override
-    public Optional<ExpenseDraft> extract(String text, List<String> categoryNames) {
+    public Extraction extract(String text, List<String> categoryNames) {
         Objects.requireNonNull(text, "Text is required");
         Objects.requireNonNull(categoryNames, "Category names are required");
 
@@ -59,13 +63,37 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
             // The model answered, but not with the JSON we asked for. Only this is "unreadable": a provider failure
             // (bad key, network, rate limit) is a different exception and must not look like a bad message.
             log.warn("The model returned an answer that is not the expected JSON: {}", e.getClass().getSimpleName());
-            return Optional.empty();
+            return new Extraction.Unreadable();
         }
-        if (extracted == null || extracted.amount() == null) {
-            return Optional.empty();
+        if (extracted == null) {
+            return new Extraction.Unreadable();
         }
-        return Optional.of(new ExpenseDraft(extracted.amount(), blankToNull(extracted.description()),
-                blankToNull(extracted.category())));
+        String description = blankToNull(extracted.description());
+        String category = blankToNull(extracted.category());
+
+        // Candidates win over a single amount: if the model saw a doubt, asking is safer than storing a guess.
+        List<BigDecimal> candidates = distinct(extracted.amountCandidates());
+        if (candidates.size() >= 2) {
+            return new Extraction.AmbiguousAmount(candidates, description, category);
+        }
+        if (extracted.amount() == null) {
+            return new Extraction.MissingAmount(description, category);
+        }
+        return new Extraction.Found(new ExpenseDraft(extracted.amount(), description, category));
+    }
+
+    /** Keeps the message order and drops repeats by value (5000 and 5000.00 are the same amount). */
+    private static List<BigDecimal> distinct(List<BigDecimal> amounts) {
+        List<BigDecimal> distinct = new ArrayList<>();
+        if (amounts == null) {
+            return distinct;
+        }
+        for (BigDecimal amount : amounts) {
+            if (amount != null && distinct.stream().noneMatch(seen -> seen.compareTo(amount) == 0)) {
+                distinct.add(amount);
+            }
+        }
+        return distinct;
     }
 
     private static String blankToNull(String value) {
@@ -75,7 +103,10 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
     /** The shape the model must answer with. Spring AI turns it into a JSON schema that goes in the prompt. */
     record ExtractedExpense(
             @JsonPropertyDescription("Total amount as a plain number with a dot as decimal separator, e.g. 15000 or "
-                    + "1234.50. Null if the message has no amount.") BigDecimal amount,
+                    + "1234.50. Null if the message has no amount, or has several and does not say which one.")
+            BigDecimal amount,
+            @JsonPropertyDescription("Every amount of the message, as plain numbers, only when there are two or more "
+                    + "and it does not say which one was spent. Empty otherwise.") List<BigDecimal> amountCandidates,
             @JsonPropertyDescription("Short phrase saying what the money was spent on, in the user's words. "
                     + "Null if the message does not say.") String description,
             @JsonPropertyDescription("Exactly one name from the Categories line, or null.") String category) {

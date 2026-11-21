@@ -1,6 +1,7 @@
 package com.expensebot.conversation.eval;
 
 import com.expensebot.conversation.application.ExpenseDraft;
+import com.expensebot.conversation.application.Extraction;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -14,68 +15,107 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ExtractionMetricsTest {
 
     private static ExtractionCase expense(String id, String amount, String category, String... tags) {
-        return new ExtractionCase(id, "message " + id, new BigDecimal(amount), null, category, List.of(), List.of(tags));
+        return new ExtractionCase(id, "message " + id, new BigDecimal(amount), null, null, category, null,
+                List.of(tags));
     }
 
-    private static ExtractionCase noExpense(String id, String... tags) {
-        return new ExtractionCase(id, "message " + id, null, null, null, List.of(), List.of(tags));
+    private static ExtractionCase ambiguous(String id, String category, String... candidates) {
+        return new ExtractionCase(id, "message " + id, null,
+                List.of(candidates).stream().map(BigDecimal::new).toList(), null, category, null, List.of());
     }
 
-    private static ExtractionOutcome read(ExtractionCase expected, String amount, String resolvedCategory) {
-        return new ExtractionOutcome(expected, new ExpenseDraft(new BigDecimal(amount), null, resolvedCategory),
+    private static ExtractionCase askAmount(String id, String description, String category, String... tags) {
+        return new ExtractionCase(id, "message " + id, null, null, description, category, null, List.of(tags));
+    }
+
+    private static ExtractionCase notAnExpense(String id, String... tags) {
+        return new ExtractionCase(id, "message " + id, null, null, null, null, null, List.of(tags));
+    }
+
+    private static ExtractionOutcome found(ExtractionCase expected, String amount, String resolvedCategory) {
+        return new ExtractionOutcome(expected,
+                new Extraction.Found(new ExpenseDraft(new BigDecimal(amount), null, resolvedCategory)),
                 resolvedCategory, 10);
     }
 
-    private static ExtractionOutcome nothingRead(ExtractionCase expected) {
-        return new ExtractionOutcome(expected, null, null, 10);
+    private static ExtractionOutcome missing(ExtractionCase expected, String description, String resolvedCategory) {
+        return new ExtractionOutcome(expected, new Extraction.MissingAmount(description, resolvedCategory),
+                resolvedCategory, 10);
+    }
+
+    private static ExtractionOutcome candidates(ExtractionCase expected, String... amounts) {
+        return new ExtractionOutcome(expected, new Extraction.AmbiguousAmount(
+                List.of(amounts).stream().map(BigDecimal::new).toList(), null, "Otros"), "Otros", 10);
+    }
+
+    private static ExtractionOutcome unreadable(ExtractionCase expected) {
+        return new ExtractionOutcome(expected, new Extraction.Unreadable(), null, 10);
     }
 
     @Test
     void comparesAmountsByValueNotByScale() {
-        ExtractionOutcome outcome = read(expense("a", "15000", "Transporte"), "15000.00", "Transporte");
+        ExtractionOutcome outcome = found(expense("a", "15000", "Transporte"), "15000.00", "Transporte");
 
         assertThat(outcome.amountCorrect()).isTrue();
         assertThat(outcome.failed()).isFalse();
     }
 
     @Test
-    void readingNothingIsRightOnlyWhenNoExpenseWasExpected() {
-        assertThat(nothingRead(noExpense("a")).amountCorrect()).isTrue();
-        assertThat(nothingRead(noExpense("a")).failed()).isFalse();
+    void anAmbiguousCaseNeedsTheSameCandidatesInAnyOrder() {
+        ExtractionCase expected = ambiguous("a", "Otros", "5000", "3000");
 
-        ExtractionOutcome missed = nothingRead(expense("b", "100", "Ocio"));
-        assertThat(missed.amountCorrect()).isFalse();
-        assertThat(missed.categoryCorrect()).isFalse();
+        assertThat(candidates(expected, "3000", "5000.00").amountCorrect()).isTrue();
+        assertThat(candidates(expected, "5000", "3500").amountCorrect()).isFalse();
+        assertThat(found(expected, "5000", "Otros").amountCorrect()).isFalse();
     }
 
     @Test
-    void readingAnExpenseWhereThereIsNoneIsWrong() {
-        assertThat(read(noExpense("a"), "1", "Otros").amountCorrect()).isFalse();
+    void askingForTheAmountNeedsAMissingAmountThatSaysWhatWasBought() {
+        ExtractionCase expected = askAmount("a", "café", "Alimentación");
+
+        assertThat(missing(expected, "un café", "Alimentación").amountCorrect()).isTrue();
+        // without a description the bot would ask to rephrase, not for the amount
+        assertThat(missing(expected, null, "Otros").amountCorrect()).isFalse();
+        assertThat(found(expected, "1", "Alimentación").amountCorrect()).isFalse();
+    }
+
+    @Test
+    void notAnExpenseAcceptsNothingReadOrAnUnreadableAnswer() {
+        ExtractionCase expected = notAnExpense("a");
+
+        assertThat(missing(expected, null, "Otros").amountCorrect()).isTrue();
+        assertThat(unreadable(expected).amountCorrect()).isTrue();
+        assertThat(unreadable(expected).failed()).isFalse();
+        assertThat(missing(expected, "hola", "Otros").amountCorrect()).isFalse();
+        assertThat(found(expected, "1", "Otros").amountCorrect()).isFalse();
     }
 
     @Test
     void fallingBackToOtherCountsOnlyWhenAnotherCategoryWasExpected() {
-        assertThat(read(expense("a", "100", "Salud"), "100", "Otros").fellBackToOther()).isTrue();
-        assertThat(read(expense("b", "100", "Otros"), "100", "Otros").fellBackToOther()).isFalse();
-        assertThat(read(expense("c", "100", "Salud"), "100", "Ocio").fellBackToOther()).isFalse();
+        assertThat(found(expense("a", "100", "Salud"), "100", "Otros").fellBackToOther()).isTrue();
+        assertThat(found(expense("b", "100", "Otros"), "100", "Otros").fellBackToOther()).isFalse();
+        assertThat(found(expense("c", "100", "Salud"), "100", "Ocio").fellBackToOther()).isFalse();
+        assertThat(missing(notAnExpense("d"), null, "Otros").fellBackToOther()).isFalse();
     }
 
     @Test
     void scoresEachMetricOverItsOwnCases() {
         List<ExtractionOutcome> outcomes = List.of(
-                read(expense("ok", "100", "Salud", "plain"), "100", "Salud"),
-                read(expense("wrong-category", "200", "Ocio", "brand"), "200", "Otros"),
-                read(expense("wrong-amount", "300", "Otros", "slang"), "3", "Otros"),
-                nothingRead(noExpense("no-amount", "no-amount")));
+                found(expense("ok", "100", "Salud", "plain"), "100", "Salud"),
+                found(expense("wrong-category", "200", "Ocio", "brand"), "200", "Otros"),
+                found(expense("wrong-amount", "300", "Otros", "slang"), "3", "Otros"),
+                missing(askAmount("ask", "café", "Alimentación"), "café", "Alimentación"),
+                missing(askAmount("ask-no-category", "algo", null), "algo", "Otros"),
+                unreadable(notAnExpense("greeting")));
 
         ExtractionMetrics metrics = ExtractionMetrics.score(outcomes);
 
-        assertThat(metrics.cases()).isEqualTo(4);
-        assertThat(metrics.amount()).isEqualTo(new ExtractionMetrics.Rate(3, 4));
-        // the case without amount is not a category case
-        assertThat(metrics.category()).isEqualTo(new ExtractionMetrics.Rate(2, 3));
-        // only "ok" and "wrong-category" expect a category other than Otros
-        assertThat(metrics.otherFallback()).isEqualTo(new ExtractionMetrics.Rate(1, 2));
+        assertThat(metrics.cases()).isEqualTo(6);
+        assertThat(metrics.amount()).isEqualTo(new ExtractionMetrics.Rate(5, 6));
+        // only the cases that expect a category
+        assertThat(metrics.category()).isEqualTo(new ExtractionMetrics.Rate(3, 4));
+        // "ok", "wrong-category" and "ask" expect a category other than Otros
+        assertThat(metrics.otherFallback()).isEqualTo(new ExtractionMetrics.Rate(1, 3));
         assertThat(metrics.failures()).extracting(o -> o.expected().id())
                 .containsExactly("wrong-category", "wrong-amount");
     }
@@ -83,17 +123,16 @@ class ExtractionMetricsTest {
     @Test
     void breaksDownByTagSortedByName() {
         List<ExtractionOutcome> outcomes = List.of(
-                read(expense("a", "100", "Salud", "slang", "brand"), "100", "Salud"),
-                read(expense("b", "200", "Ocio", "slang"), "20", "Ocio"),
-                nothingRead(noExpense("c", "no-amount")));
+                found(expense("a", "100", "Salud", "slang", "brand"), "100", "Salud"),
+                found(expense("b", "200", "Ocio", "slang"), "20", "Ocio"),
+                unreadable(notAnExpense("c", "not-an-expense")));
 
         ExtractionMetrics metrics = ExtractionMetrics.score(outcomes);
 
-        assertThat(metrics.byTag()).containsOnlyKeys("brand", "no-amount", "slang");
-        assertThat(metrics.byTag().keySet()).containsExactly("brand", "no-amount", "slang");
+        assertThat(metrics.byTag().keySet()).containsExactly("brand", "not-an-expense", "slang");
         assertThat(metrics.byTag().get("slang").amount()).isEqualTo(new ExtractionMetrics.Rate(1, 2));
         assertThat(metrics.byTag().get("slang").category()).isEqualTo(new ExtractionMetrics.Rate(2, 2));
-        assertThat(metrics.byTag().get("no-amount").category().toString()).isEqualTo("n/a");
+        assertThat(metrics.byTag().get("not-an-expense").category().toString()).isEqualTo("n/a");
     }
 
     @Test
@@ -103,8 +142,11 @@ class ExtractionMetricsTest {
     }
 
     @Test
-    void aResolvedCategoryNeedsADraft() {
-        assertThatThrownBy(() -> new ExtractionOutcome(noExpense("a"), null, "Otros", 1))
+    void onlyAnUnreadableAnswerHasNoResolvedCategory() {
+        assertThatThrownBy(() -> new ExtractionOutcome(notAnExpense("a"), new Extraction.Unreadable(), "Otros", 1))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ExtractionOutcome(notAnExpense("a"),
+                new Extraction.MissingAmount(null, null), null, 1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

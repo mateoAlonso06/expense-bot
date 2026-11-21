@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **292 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **294 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -27,12 +27,12 @@ Current state: **292 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 | 4 | Web slice | 33 | Controllers, security rules (JWT, CORS, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
 | 5 | Persistence slice | 52 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
 | 6 | Architecture | 5 | Module and layer rules are not broken (domain has no Spring, application does not touch infrastructure, ...) | ArchUnit (`@ArchTest`) | No |
-| 7 | Flow | 6 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
+| 7 | Flow | 8 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
 | 8 | Smoke | 2 | The application context starts with all beans wired, and the Spring AI `ChatClient.Builder` exists without an API key | `@SpringBootTest`, Testcontainers | **Yes** |
 | 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
 | 9 | LLM extraction eval | 1 | The real extractor runs over the labeled dataset in `eval/extraction/` and writes a report (amount, category, `Other` fallback, per tag). It measures and never fails on a low score. **Opt-in and not part of any suite**: one call per case. See the README | `@SpringBootTest` with only Spring AI and the extractor, a real `OPENAI_API_KEY` | No |
 
-232 tests run without Docker; 60 need it.
+232 tests run without Docker; 62 need it.
 
 ## Where each test lives
 

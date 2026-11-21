@@ -27,6 +27,7 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -138,6 +139,52 @@ class TelegramReplyFlowTest {
     }
 
     @Test
+    void aMessageWithoutAnAmountIsCompletedByTheAnswerToTheQuestion() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        UUID userId = linkedUser(telegramUser);
+        when(expenseExtractor.extract(eq("almuerzo con el equipo"), anyList()))
+                .thenReturn(new Extraction.MissingAmount("almuerzo", "alimentacion"));
+        when(expenseExtractor.extract(eq("8000"), anyList()))
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("8000"), null, null)));
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "almuerzo con el equipo");
+        assertThat(nextReplyText()).isEqualTo("¿Cuánto gastaste en almuerzo?");
+        assertThat(expenses(userId)).isZero();
+        assertThat(pendingQuestions(userId)).isEqualTo(1);
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "8000");
+        assertThat(nextReplyText()).startsWith("Registré $8.000,00 en Alimentación (");
+        // what was bought and the original message come from the first message, the amount from the answer
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM expense e JOIN category c ON c.id = e.category_id
+                WHERE e.user_id = ? AND e.amount = 8000.00 AND e.description = 'almuerzo'
+                AND e.original_message = 'almuerzo con el equipo' AND c.name = 'Alimentación'""",
+                Integer.class, userId)).isEqualTo(1);
+        assertThat(pendingQuestions(userId)).isZero();
+    }
+
+    @Test
+    void anAmbiguousAmountIsStoredOnceTheUserSaysWhichOneItWas() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        UUID userId = linkedUser(telegramUser);
+        when(expenseExtractor.extract(eq("super 5000 o 3000"), anyList()))
+                .thenReturn(new Extraction.AmbiguousAmount(
+                        List.of(new BigDecimal("5000"), new BigDecimal("3000")), "super", "alimentacion"));
+        when(expenseExtractor.extract(eq("5000"), anyList()))
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("5000"), null, null)));
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "super 5000 o 3000");
+        assertThat(nextReplyText()).isEqualTo("¿Fueron $5.000 o $3.000?");
+        assertThat(expenses(userId)).isZero();
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "5000");
+        assertThat(nextReplyText()).startsWith("Registré $5.000,00 en Alimentación (");
+        assertThat(jdbc.queryForObject("SELECT amount FROM expense WHERE user_id = ?", BigDecimal.class, userId))
+                .isEqualByComparingTo("5000");
+        assertThat(pendingQuestions(userId)).isZero();
+    }
+
+    @Test
     void aCodeCannotBeUsedTwice() throws Exception {
         String code = requestLinkCode.execute(newUser()).code();
         postUpdate(UPDATE_IDS.incrementAndGet(), TELEGRAM_USER_IDS.incrementAndGet(), code);
@@ -184,6 +231,23 @@ class TelegramReplyFlowTest {
                                 {"update_id": %d, "message": {"message_id": 1, "from": {"id": %d}, "text": "%s"}}"""
                                 .formatted(updateId, telegramUser, text)))
                 .andExpect(status().isOk());
+    }
+
+    /** A new user whose Telegram account is linked through the bot, as a real user would do it. */
+    private UUID linkedUser(long telegramUser) throws Exception {
+        UUID userId = newUser();
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, requestLinkCode.execute(userId).code());
+        assertThat(nextReplyText()).startsWith("Cuenta vinculada");
+        return userId;
+    }
+
+    private int expenses(UUID userId) {
+        return jdbc.queryForObject("SELECT count(*) FROM expense WHERE user_id = ?", Integer.class, userId);
+    }
+
+    private int pendingQuestions(UUID userId) {
+        return jdbc.queryForObject("SELECT count(*) FROM pending_clarification WHERE user_id = ?", Integer.class,
+                userId);
     }
 
     private UUID newUser() {

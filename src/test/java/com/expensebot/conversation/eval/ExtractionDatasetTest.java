@@ -116,6 +116,34 @@ class ExtractionDatasetTest {
     }
 
     @Test
+    void readsACorrectionWithItsNewValuesAndReference() throws IOException {
+        ExtractionCase correction = ExtractionDataset.load(file("{\"id\":\"a\",\"message\":\"la nafta eran 3500\","
+                + "\"correction\":true,\"amount\":\"3500\",\"reference\":\"la nafta\"}")).cases().getFirst();
+
+        assertThat(correction.kind()).isEqualTo(ExtractionCase.Kind.CORRECTION);
+        assertThat(correction.category()).isNull();
+        assertThat(correction.reference()).isEqualTo("la nafta");
+    }
+
+    @Test
+    void rejectsCandidatesInACorrection() throws IOException {
+        Path dataset = file("{\"id\":\"a\",\"message\":\"no, 5000 o 3000\",\"correction\":true,"
+                + "\"amountCandidates\":[\"5000\",\"3000\"]}");
+
+        assertThatThrownBy(() -> ExtractionDataset.load(dataset))
+                .hasMessageContaining("a correction has no amountCandidates");
+    }
+
+    @Test
+    void rejectsAReferenceOutsideACorrection() throws IOException {
+        Path dataset = file("{\"id\":\"a\",\"message\":\"luz 100\",\"amount\":\"100\","
+                + "\"category\":\"Servicios\",\"reference\":\"luz\"}");
+
+        assertThatThrownBy(() -> ExtractionDataset.load(dataset))
+                .hasMessageContaining("only a correction has a reference");
+    }
+
+    @Test
     void rejectsDuplicateIds() throws IOException {
         String line = "{\"id\":\"a\",\"message\":\"luz 100\",\"amount\":\"100\",\"category\":\"Servicios\"}";
 

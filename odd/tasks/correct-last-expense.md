@@ -7,7 +7,7 @@ Let a linked user fix a recently stored expense from the chat ("no, eran 15500",
 Today a correction is read as a new message: at best "no, eran 15500" stores a second expense of 15500. The user has to go to the web panel to fix a typo the bot just confirmed.
 
 ## Scope (agreed design)
-- The extractor reports a correction as a new `Extraction.Correction(amount, description, categoryName, reference)`: only the new values the user gives (null = unchanged) and how the user names the expense ("la nafta"). Same LLM call; no router yet (revisit in #40).
+- The extractor reports a correction as a new `Extraction.Correction(amount, description, categoryName, reference)`: only the new values the user gives (null = unchanged) and how the user names the expense ("la nafta"). Inside the adapter, a first LLM call classifies the intent (expense or correction), then a focused prompt reads it (the expense prompt from #11, or a correction prompt). The `ExpenseExtractor` port does not change. The classifier gains a third intent (query) in #40; Jev for the classifier is the spike #44.
 - The code picks the expense: recent expenses of the conversation (same user and channel, last 30 minutes, configurable) via a new read use case in `expenses` (`ListRecentExpensesUseCase`). No reference -> the last one. Reference -> match by description among the recent ones; one match -> that one; several or none -> ask the user to repeat naming which one (no pending state).
 - Editing goes through `EditExpenseUseCase` (#12): only amount, description and category; ownership and validation already there.
 - Fixed replies: confirmation; "No encontré un gasto reciente para corregir. Los anteriores los podés editar desde el panel web."; "Solo puedo corregir el monto, la descripción o la categoría."; unknown category lists the available ones.
@@ -18,11 +18,12 @@ Today a correction is read as a new message: at best "no, eran 15500" stores a s
 - Effective TDD: off (no project/session setting enables it); ordinary checks per phase. Runner: `./mvnw test` with JDK 21.
 
 ## Tasks
-- [x] P1 Extractor: `Extraction.Correction`, prompt rules, response fields `correction` and `reference`, mapping; flow answers REPHRASE for a correction until P3; unit tests.
-- [ ] P2 Eval: CORRECTION kind in the dataset and scoring, correction cases, recorded run compared with #11's.
-- [ ] P3 Flow in `conversation`: pick the expense, edit, reply; tests with mocks (`ListRecentExpensesUseCase` interface only).
-- [ ] P4 `expenses`: implement `ListRecentExpensesUseCase` with `JdbcClient`; Postgres tests.
-- [ ] P5 Flow test: store -> correct, through the Telegram webhook.
+- [x] P1 Extractor: `Extraction.Correction`, prompt rules, response fields `correction` and `reference`, mapping; flow answers REPHRASE for a correction until the flow phase; unit tests. (`e29332e`)
+- [x] P2 Eval: CORRECTION kind in the dataset and scoring, 8 correction cases, recorded run (the "before" run that motivated the classifier).
+- [ ] P3 Classifier inside the adapter: intent call (expense vs correction, few-shot incl. self-corrections as expense), expense prompt back to the #11 version, focused correction prompt; `ExpenseExtractor` port unchanged; eval extractor hash covers the whole `llm` package; recorded run compared with P2 and #11.
+- [ ] P4 Flow: `CorrectRecentExpense` in `conversation.application`, called from `RegisterExpenseFromText` for a `Correction`; pending-question rule (an amount-only correction without reference answers the waiting question); tests with mocks (`ListRecentExpensesUseCase` interface only).
+- [ ] P5 `expenses`: implement `ListRecentExpensesUseCase` (user, channel, since) with `JdbcClient`; Postgres tests; window property (30 minutes).
+- [ ] P6 Flow test: store -> correct, through the Telegram webhook.
 
 ## Acceptance criteria (from #13)
 - Given a recent expense in the conversation, a correction updates the editable fields and the bot confirms.
@@ -31,4 +32,8 @@ Today a correction is read as a new message: at best "no, eran 15500" stores a s
 
 ## Progress / next step
 Branch `feat/correct-last-expense` from `main` (`de1abb3`).
-P1 done (not committed, waiting for review): `Extraction.Correction(amount, description, categoryName, reference)` (`describesAPurchase()` false); prompt rules (only new values, null = unchanged, no inferred category, reference, a self-fix inside a new expense is not a correction); response fields `correction` and `reference`; a correction ignores candidates. `RegisterExpenseFromText` answers REPHRASE to a correction until P3 (inside a pending question it repeats the question). Eval report shows corrections; scoring comes in P2. 4 new extractor tests. Full suite: 299 run (298 + 1 opt-in skipped), 0 failures. Next: P2.
+P1 done: `Extraction.Correction(amount, description, categoryName, reference)` (`describesAPurchase()` false); prompt rules (only new values, null = unchanged, no inferred category, reference, a self-fix inside a new expense is not a correction); response fields `correction` and `reference`; a correction ignores candidates. `RegisterExpenseFromText` answers REPHRASE to a correction until P3 (inside a pending question it repeats the question). Eval report shows corrections; scoring comes in P2. 4 new extractor tests. Full suite: 299 run (298 + 1 opt-in skipped), 0 failures. Committed as `e29332e`.
+P2 committed: eval knows CORRECTION (`correction`, `reference` in the dataset; a correction is right when it changes exactly the expected fields: same amount or none, description only if expected, no category unless expected). 8 correction cases (54 total). Recorded run `2026-11-23_1535_gpt-4o-mini_0f27b976`: amount 46/54 (85.2%), category 39/47 (83.0%), Other fallback 3/44. Finding: the correction rule works for plain cases ("no, eran 15500", "me equivoqué, fueron 2300", "perdón, eran 1800 y era de salud") but misses 5/8 (with a reference it reads a new expense; "categoría ocio" and "cambiá la fecha" read as not an expense; "era asado, no carnicería" loses the new description) and breaks both self-corrections ("uber 3000 no, 3500" would edit the previous expense instead of storing a new one). Category also worse (carnicería -> Otros, gas -> Transporte, osde -> Servicios).
+Decision after the P2 run: intent detection moves to a separate call inside the adapter (classifier, then the expense prompt from #11 or a correction prompt); the `ExpenseExtractor` port is unchanged. Plan: P2 committed as the "before" run, P3 classifier, P4 `CorrectRecentExpense`, P5 `ListRecentExpensesUseCase`, P6 flow test. Jev (TypeSafe AI) for the classifier is a later spike: #44.
+P2 committed (last commit of the branch). Full suite: 304 run (303 + 1 opt-in skipped), 0 failures.
+Next: P3 (classifier inside the adapter). Start with the case table and the prompts before code.

@@ -26,7 +26,9 @@ public record ExtractionOutcome(ExtractionCase expected, Extraction actual, Stri
 
     /**
      * The amount part of the answer leads to what the bot should do: the same amount, the same candidates (in any
-     * order), a question for the amount, or a request to rephrase.
+     * order), a question for the amount, or a request to rephrase. For a correction, it changes exactly the fields the
+     * case expects: the same amount (or none), a description only if one is expected, and no category unless one is
+     * expected (the category value itself is scored by {@link #categoryCorrect()}).
      */
     public boolean amountCorrect() {
         return switch (expected.kind()) {
@@ -36,6 +38,10 @@ public record ExtractionOutcome(ExtractionCase expected, Extraction actual, Stri
                     && sameAmounts(ambiguous.candidates(), expected.amountCandidates());
             case ASK_AMOUNT -> actual instanceof Extraction.MissingAmount(String description, var category)
                     && description != null;
+            case CORRECTION -> actual instanceof Extraction.Correction correction
+                    && sameAmount(correction.amount(), expected.amount())
+                    && (correction.description() == null) == (expected.description() == null)
+                    && (expected.category() != null || correction.categoryName() == null);
             case NOT_AN_EXPENSE -> actual instanceof Extraction.Unreadable
                     || actual instanceof Extraction.MissingAmount(String description, var category)
                     && description == null;
@@ -55,6 +61,10 @@ public record ExtractionOutcome(ExtractionCase expected, Extraction actual, Stri
 
     public boolean failed() {
         return !amountCorrect() || (expected.category() != null && !categoryCorrect());
+    }
+
+    private static boolean sameAmount(BigDecimal actual, BigDecimal expected) {
+        return actual == null ? expected == null : expected != null && actual.compareTo(expected) == 0;
     }
 
     private static boolean sameAmounts(List<BigDecimal> actual, List<BigDecimal> expected) {

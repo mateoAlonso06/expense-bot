@@ -182,15 +182,22 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
         expected.put("amountCandidates", plain(o.expected().amountCandidates()));
         expected.put("description", o.expected().description());
         expected.put("category", o.expected().category());
+        expected.put("reference", o.expected().reference());
         c.put("expected", expected);
         Map<String, Object> actual = new LinkedHashMap<>();
         actual.put("kind", o.actual().getClass().getSimpleName());
-        actual.put("amount", o.actual() instanceof Extraction.Found(var draft) ? draft.amount().toPlainString() : null);
+        actual.put("amount", switch (o.actual()) {
+            case Extraction.Found(var draft) -> draft.amount().toPlainString();
+            case Extraction.Correction correction when correction.amount() != null ->
+                    correction.amount().toPlainString();
+            default -> null;
+        });
         actual.put("amountCandidates", o.actual() instanceof Extraction.AmbiguousAmount a
                 ? plain(a.candidates()) : List.of());
         actual.put("description", description(o.actual()).orElse(null));
         actual.put("modelCategory", modelCategory(o.actual()).orElse(null));
         actual.put("resolvedCategory", o.resolvedCategory());
+        actual.put("reference", o.actual() instanceof Extraction.Correction correction ? correction.reference() : null);
         c.put("actual", actual);
         c.put("amountCorrect", o.amountCorrect());
         c.put("categoryCorrect", o.expected().category() != null ? o.categoryCorrect() : null);
@@ -255,6 +262,7 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
             case AMBIGUOUS -> String.join(" or ", plain(c.amountCandidates()));
             case ASK_AMOUNT -> "ask amount";
             case NOT_AN_EXPENSE -> "not an expense";
+            case CORRECTION -> c.amount() == null ? "correction" : "correction to " + c.amount().toPlainString();
         };
         return c.category() == null ? amount : amount + " · " + c.category();
     }

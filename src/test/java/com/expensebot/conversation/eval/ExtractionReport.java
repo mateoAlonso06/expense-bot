@@ -212,6 +212,7 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
             case Extraction.Found(var draft) -> draft.categoryName();
             case Extraction.MissingAmount(var description, var category) -> category;
             case Extraction.AmbiguousAmount ambiguous -> ambiguous.categoryName();
+            case Extraction.Correction correction -> correction.categoryName();
             case Extraction.Unreadable() -> null;
         });
     }
@@ -221,6 +222,7 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
             case Extraction.Found(var draft) -> draft.description();
             case Extraction.MissingAmount(var description, var category) -> description;
             case Extraction.AmbiguousAmount ambiguous -> ambiguous.description();
+            case Extraction.Correction correction -> correction.description();
             case Extraction.Unreadable() -> null;
         });
     }
@@ -232,6 +234,8 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
             case Extraction.AmbiguousAmount ambiguous -> String.join(" or ", plain(ambiguous.candidates()));
             case Extraction.MissingAmount(var description, var category) ->
                     description == null ? "not an expense" : "ask amount";
+            case Extraction.Correction correction -> correction.amount() == null
+                    ? "correction" : "correction to " + correction.amount().toPlainString();
             case Extraction.Unreadable() -> "unreadable answer";
         };
     }

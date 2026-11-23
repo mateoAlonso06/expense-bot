@@ -115,6 +115,8 @@ class RegisterExpenseFromText {
             // nothing to ask about: neither an amount nor what was bought
             case Extraction.MissingAmount missing -> REPHRASE;
             case Extraction.Unreadable unreadable -> REPHRASE;
+            // correcting an expense comes in a later phase of #13
+            case Extraction.Correction correction -> REPHRASE;
         };
     }
 

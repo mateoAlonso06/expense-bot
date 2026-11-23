@@ -143,6 +143,41 @@ class SpringAiExpenseExtractorTest {
     }
 
     @Test
+    void reportsACorrectionWithOnlyTheNewValuesAndTheExpenseItNames() {
+        modelAnswers("{\"correction\": true, \"amount\": 3500, \"description\": null, \"category\": null, "
+                + "\"reference\": \"la nafta\"}");
+
+        assertThat(extractor.extract("la nafta eran 3500", CATEGORIES))
+                .isEqualTo(new Extraction.Correction(new BigDecimal("3500"), null, null, "la nafta"));
+    }
+
+    @Test
+    void aCorrectionCanChangeNothingEditable() {
+        // for example "cambiá la fecha a ayer": the date is not editable, so no field comes back
+        modelAnswers("{\"correction\": true, \"amount\": null, \"description\": \" \", \"category\": null, "
+                + "\"reference\": \"\"}");
+
+        assertThat(extractor.extract("cambiá la fecha a ayer", CATEGORIES))
+                .isEqualTo(new Extraction.Correction(null, null, null, null));
+    }
+
+    @Test
+    void aCorrectionIsNeverReadAsAmbiguous() {
+        modelAnswers("{\"correction\": true, \"amount\": 15500, \"amountCandidates\": [15000, 15500], "
+                + "\"description\": null, \"category\": null, \"reference\": null}");
+
+        assertThat(extractor.extract("no, eran 15500 y no 15000", CATEGORIES))
+                .isEqualTo(new Extraction.Correction(new BigDecimal("15500"), null, null, null));
+    }
+
+    @Test
+    void aMessageIsANewExpenseUnlessTheModelSaysItIsACorrection() {
+        modelAnswers("{\"correction\": false, \"amount\": 500, \"description\": null, \"category\": null}");
+
+        assertThat(extractor.extract("500", CATEGORIES)).isInstanceOf(Extraction.Found.class);
+    }
+
+    @Test
     void reportsAnUnreadableAnswerWhenTheModelDoesNotAnswerWithJson() {
         modelAnswers("Lo siento, no entendí el mensaje.");
 
@@ -164,10 +199,12 @@ class SpringAiExpenseExtractorTest {
         extractor.extract("$15.000 carnicería", CATEGORIES);
 
         String sent = sentToTheModel();
-        assertThat(sent).contains("SYSTEM", "Argentine number format", "amountCandidates lists every one of them");
+        assertThat(sent).contains("SYSTEM", "Argentine number format", "amountCandidates lists every one of them",
+                "correction is true", "do not infer a category");
         assertThat(sent).contains("USER", "Categories: Alimentación, Transporte, Otros", "Message: $15.000 carnicería");
         // the field descriptions travel with the schema
-        assertThat(sent).contains("Total amount as a plain number", "only when there are two or more");
+        assertThat(sent).contains("Total amount as a plain number", "only when there are two or more",
+                "how the user names the expense to correct");
     }
 
     @Test

@@ -24,5 +24,8 @@ class ExtractionTest {
         assertThat(new Extraction.MissingAmount(null, null).describesAPurchase()).isFalse();
         assertThat(new Extraction.AmbiguousAmount(TWO_AMOUNTS, null, null).describesAPurchase()).isFalse();
         assertThat(new Extraction.Unreadable().describesAPurchase()).isFalse();
+        // a correction names an expense already recorded, not a new purchase
+        assertThat(new Extraction.Correction(BigDecimal.TEN, "asado", null, "carnicería").describesAPurchase())
+                .isFalse();
     }
 }

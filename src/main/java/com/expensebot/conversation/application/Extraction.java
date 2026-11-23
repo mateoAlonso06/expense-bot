@@ -67,6 +67,22 @@ public sealed interface Extraction {
     }
 
     /**
+     * The message corrects an expense already recorded instead of reporting a new one ("no, eran 15500", "categoría
+     * ocio"). Each value is the new one the user gives, or null when the user does not change it.
+     *
+     * @param reference how the user names the expense to correct ("la nafta"), or null when the message does not say
+     */
+    record Correction(BigDecimal amount, String description, String categoryName, String reference)
+            implements Extraction {
+
+        /** A correction is about an expense already recorded, never a new purchase. */
+        @Override
+        public boolean describesAPurchase() {
+            return false;
+        }
+    }
+
+    /**
      * The model did not answer in the expected format, so nothing can be read from it.
      */
     record Unreadable() implements Extraction {

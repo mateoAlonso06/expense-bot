@@ -7,7 +7,8 @@ public interface ExpenseExtractor {
 
     /**
      * @param categoryNames the catalog categories the result may point to
-     * @return what was read: a clear amount, a missing or ambiguous one, or nothing readable
+     * @return what was read: a clear amount, a missing or ambiguous one, a correction of an expense already
+     *         recorded, or nothing readable
      */
     Extraction extract(String text, List<String> categoryNames);
 }

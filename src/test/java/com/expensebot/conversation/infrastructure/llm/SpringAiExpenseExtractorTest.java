@@ -15,26 +15,39 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** The model is a fake that answers a fixed text, so these tests need no API key and never touch the network. */
+/**
+ * The model is a fake that answers a fixed text, so these tests need no API key and never touch the network. The
+ * intent classifier is a mock too: its own prompt is tested in {@link IntentClassifierTest}; here it only picks which
+ * reading runs.
+ */
 @Tag("mocks")
 class SpringAiExpenseExtractorTest {
     private static final List<String> CATEGORIES = List.of("Alimentación", "Transporte", "Otros");
 
     private final ChatModel chatModel = mock(ChatModel.class);
+    private final IntentClassifier intentClassifier = mock(IntentClassifier.class);
     private final SpringAiExpenseExtractor extractor;
 
     SpringAiExpenseExtractorTest() {
         // The ChatClient asks the model for its default options before every call; a bare mock would answer null.
         when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
-        extractor = new SpringAiExpenseExtractor(ChatClient.builder(chatModel));
+        // Most cases are new expenses; the correction tests say so.
+        when(intentClassifier.classify(any())).thenReturn(Optional.of(IntentClassifier.Intent.EXPENSE));
+        extractor = new SpringAiExpenseExtractor(ChatClient.builder(chatModel), intentClassifier);
+    }
+
+    private void classifiedAsACorrection() {
+        when(intentClassifier.classify(any())).thenReturn(Optional.of(IntentClassifier.Intent.CORRECTION));
     }
 
     private void modelAnswers(String text) {
@@ -143,9 +156,9 @@ class SpringAiExpenseExtractorTest {
     }
 
     @Test
-    void reportsACorrectionWithOnlyTheNewValuesAndTheExpenseItNames() {
-        modelAnswers("{\"correction\": true, \"amount\": 3500, \"description\": null, \"category\": null, "
-                + "\"reference\": \"la nafta\"}");
+    void readsACorrectionWithOnlyTheNewValuesAndTheExpenseItNames() {
+        classifiedAsACorrection();
+        modelAnswers("{\"amount\": 3500, \"description\": null, \"category\": null, \"reference\": \"la nafta\"}");
 
         assertThat(extractor.extract("la nafta eran 3500", CATEGORIES))
                 .isEqualTo(new Extraction.Correction(new BigDecimal("3500"), null, null, "la nafta"));
@@ -154,27 +167,42 @@ class SpringAiExpenseExtractorTest {
     @Test
     void aCorrectionCanChangeNothingEditable() {
         // for example "cambiá la fecha a ayer": the date is not editable, so no field comes back
-        modelAnswers("{\"correction\": true, \"amount\": null, \"description\": \" \", \"category\": null, "
-                + "\"reference\": \"\"}");
+        classifiedAsACorrection();
+        modelAnswers("{\"amount\": null, \"description\": \" \", \"category\": null, \"reference\": \"\"}");
 
         assertThat(extractor.extract("cambiá la fecha a ayer", CATEGORIES))
                 .isEqualTo(new Extraction.Correction(null, null, null, null));
     }
 
     @Test
-    void aCorrectionIsNeverReadAsAmbiguous() {
-        modelAnswers("{\"correction\": true, \"amount\": 15500, \"amountCandidates\": [15000, 15500], "
-                + "\"description\": null, \"category\": null, \"reference\": null}");
+    void readsACorrectionWithTheCorrectionPrompt() {
+        classifiedAsACorrection();
+        modelAnswers("{\"amount\": null, \"description\": null, \"category\": \"Otros\", \"reference\": null}");
 
-        assertThat(extractor.extract("no, eran 15500 y no 15000", CATEGORIES))
-                .isEqualTo(new Extraction.Correction(new BigDecimal("15500"), null, null, null));
+        extractor.extract("categoría otros", CATEGORIES);
+
+        String sent = sentToTheModel();
+        assertThat(sent).contains("SYSTEM", "corrects an expense the user already recorded", "Argentine number format",
+                "Do not infer a category", "never in description");
+        assertThat(sent).doesNotContain("amountCandidates lists every one of them");
+        assertThat(sent).contains("USER", "Categories: Alimentación, Transporte, Otros", "Message: categoría otros");
+        assertThat(sent).contains("how the user names the expense to correct");
     }
 
     @Test
-    void aMessageIsANewExpenseUnlessTheModelSaysItIsACorrection() {
-        modelAnswers("{\"correction\": false, \"amount\": 500, \"description\": null, \"category\": null}");
+    void doesNotReadTheMessageWhenTheIntentIsUnreadable() {
+        when(intentClassifier.classify(any())).thenReturn(Optional.empty());
 
-        assertThat(extractor.extract("500", CATEGORIES)).isInstanceOf(Extraction.Found.class);
+        assertThat(extractor.extract("hola", CATEGORIES)).isInstanceOf(Extraction.Unreadable.class);
+        verify(chatModel, never()).call(any(Prompt.class));
+    }
+
+    @Test
+    void reportsAnUnreadableAnswerWhenTheCorrectionIsNotJson() {
+        classifiedAsACorrection();
+        modelAnswers("No entendí.");
+
+        assertThat(extractor.extract("no, eran 15500", CATEGORIES)).isInstanceOf(Extraction.Unreadable.class);
     }
 
     @Test
@@ -199,12 +227,11 @@ class SpringAiExpenseExtractorTest {
         extractor.extract("$15.000 carnicería", CATEGORIES);
 
         String sent = sentToTheModel();
-        assertThat(sent).contains("SYSTEM", "Argentine number format", "amountCandidates lists every one of them",
-                "correction is true", "do not infer a category");
+        assertThat(sent).contains("SYSTEM", "Argentine number format", "amountCandidates lists every one of them");
+        assertThat(sent).doesNotContain("corrects an expense the user already recorded");
         assertThat(sent).contains("USER", "Categories: Alimentación, Transporte, Otros", "Message: $15.000 carnicería");
         // the field descriptions travel with the schema
-        assertThat(sent).contains("Total amount as a plain number", "only when there are two or more",
-                "how the user names the expense to correct");
+        assertThat(sent).contains("Total amount as a plain number", "only when there are two or more");
     }
 
     @Test

@@ -30,8 +30,8 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
     /**
      * What a run was measured with. Two runs are comparable only with the same dataset version.
      *
-     * @param extractorVersion first 8 hex of the SHA-256 of the extractor source: changes with the prompt or the
-     *                         response schema (and, as a false positive, with a comment)
+     * @param extractorVersion first 8 hex of the SHA-256 of the extractor package sources: changes with a prompt,
+     *                         the routing or a response schema (and, as a false positive, with a comment)
      * @param note             free text explaining why the run was recorded; may be null
      */
     public record RunInfo(OffsetDateTime startedAt, String model, Double temperature, String extractorVersion,
@@ -94,7 +94,7 @@ public record ExtractionReport(RunInfo run, ExtractionMetrics metrics, List<Extr
         md.append("| Date | ").append(run.startedAt()).append(" |\n");
         md.append("| Model | ").append(run.model()).append(", temperature ").append(run.temperature()).append(" |\n");
         md.append("| Extractor version | `").append(run.extractorVersion())
-                .append("` (SHA-256 of `SpringAiExpenseExtractor.java`: prompt and response schema) |\n");
+                .append("` (SHA-256 of the `llm` package sources: prompts, routing and response schemas) |\n");
         md.append("| Dataset version | `").append(run.datasetVersion()).append("` (").append(run.cases())
                 .append(" cases) |\n");
         if (run.note() != null) {

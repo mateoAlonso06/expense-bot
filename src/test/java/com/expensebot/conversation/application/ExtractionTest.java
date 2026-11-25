@@ -28,4 +28,18 @@ class ExtractionTest {
         assertThat(new Extraction.Correction(BigDecimal.TEN, "asado", null, "carnicería").describesAPurchase())
                 .isFalse();
     }
+
+    @Test
+    void aCorrectionKnowsWhetherItChangesAnythingEditable() {
+        assertThat(new Extraction.Correction(null, null, null, "la nafta").changesNothing()).isTrue();
+        assertThat(new Extraction.Correction(null, null, "Ocio", null).changesNothing()).isFalse();
+    }
+
+    @Test
+    void onlyANewAmountWithNothingElseIsAnAmountOnlyCorrection() {
+        assertThat(new Extraction.Correction(BigDecimal.TEN, null, null, null).onlyChangesTheAmount()).isTrue();
+        assertThat(new Extraction.Correction(BigDecimal.TEN, null, null, "la nafta").onlyChangesTheAmount()).isFalse();
+        assertThat(new Extraction.Correction(BigDecimal.TEN, null, "Salud", null).onlyChangesTheAmount()).isFalse();
+        assertThat(new Extraction.Correction(null, "asado", null, null).onlyChangesTheAmount()).isFalse();
+    }
 }

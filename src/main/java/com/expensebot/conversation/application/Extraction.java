@@ -80,6 +80,19 @@ public sealed interface Extraction {
         public boolean describesAPurchase() {
             return false;
         }
+
+        /** True when no editable field changes, for example "cambiá la fecha a ayer". */
+        public boolean changesNothing() {
+            return amount == null && description == null && categoryName == null;
+        }
+
+        /**
+         * True for "eran 15000": a new amount and nothing else, not even which expense. While the bot waits for an
+         * amount, such a message is the answer, not a correction.
+         */
+        public boolean onlyChangesTheAmount() {
+            return amount != null && description == null && categoryName == null && reference == null;
+        }
     }
 
     /**

@@ -54,13 +54,15 @@ class RegisterExpenseFromTextTest {
     private ExpenseExtractor expenseExtractor;
     @Mock
     private PendingClarificationRepository pendingClarifications;
+    @Mock
+    private CorrectRecentExpense correctRecentExpense;
 
     private RegisterExpenseFromText registerExpenseFromText;
 
     @BeforeEach
     void createTheService() {
         registerExpenseFromText = new RegisterExpenseFromText(listCategories, registerExpense, expenseExtractor,
-                pendingClarifications, Clock.fixed(NOW, ZoneOffset.UTC), TTL);
+                pendingClarifications, correctRecentExpense, Clock.fixed(NOW, ZoneOffset.UTC), TTL);
     }
 
     private static IncomingMessage telegram(String text) {
@@ -278,5 +280,48 @@ class RegisterExpenseFromTextTest {
 
         assertThat(registerExpenseFromText.replyTo(USER_ID, message)).isEqualTo(RegisterExpenseFromText.ONLY_TEXT);
         verifyNoInteractions(listCategories, expenseExtractor, registerExpense, pendingClarifications);
+    }
+
+    @Test
+    void aCorrectionGoesToTheRecentExpenseItChanges() {
+        var correction = new Extraction.Correction(new BigDecimal("15500"), null, null, null);
+        extractorReads(correction);
+        when(correctRecentExpense.replyTo(USER_ID, Channel.TELEGRAM, correction, CATALOG)).thenReturn("Corregí …");
+
+        String reply = registerExpenseFromText.replyTo(USER_ID, telegram("no, eran 15500"));
+
+        assertThat(reply).isEqualTo("Corregí …");
+        verifyNoInteractions(registerExpense);
+    }
+
+    @Test
+    void anAmountOnlyCorrectionAnswersTheWaitingQuestion() {
+        // "eran 15000" reads as a correction on its own; while the bot waits for an amount, it is the answer
+        waitingFor(lunchWithoutAmount(NOW.plus(TTL)));
+        extractorReads(new Extraction.Correction(new BigDecimal("15000"), null, null, null));
+        storingAnswers("15000.00", "Alimentación");
+
+        String reply = registerExpenseFromText.replyTo(USER_ID, telegram("eran 15000"));
+
+        RegisterExpenseCommand command = registeredCommand();
+        assertThat(command.amount()).isEqualByComparingTo("15000");
+        assertThat(command.description()).isEqualTo("almuerzo");
+        assertThat(command.originalMessage()).isEqualTo("almuerzo con el equipo");
+        assertThat(reply).isEqualTo("Registré $15.000,00 en Alimentación (19/11/2026).");
+        verify(pendingClarifications).delete(USER_ID, Channel.TELEGRAM);
+        verifyNoInteractions(correctRecentExpense);
+    }
+
+    @Test
+    void anyOtherCorrectionRepeatsTheWaitingQuestion() {
+        // "categoría ocio" may be meant for the lunch still waiting, which is not stored: nothing is changed
+        waitingFor(lunchWithoutAmount(NOW.plus(TTL)));
+        extractorReads(new Extraction.Correction(null, null, "Ocio", null));
+
+        String reply = registerExpenseFromText.replyTo(USER_ID, telegram("categoría ocio"));
+
+        assertThat(reply).isEqualTo("No entendí el monto. ¿Cuánto gastaste en almuerzo?");
+        verifyNoInteractions(correctRecentExpense, registerExpense);
+        verify(pendingClarifications, never()).delete(any(), any());
     }
 }

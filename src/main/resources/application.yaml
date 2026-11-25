@@ -47,6 +47,10 @@ conversation:
   clarification:
     # how long the bot waits for the answer to a question about an expense (a missing or ambiguous amount)
     ttl: 10m
+  correction:
+    # how far back a chat correction ("no, eran 15500") looks for the expense it changes, counted from when it was
+    # stored; older expenses are edited from the web panel
+    window: 30m
 
 telegram:
   # webhook (prod) or polling (dev); polling needs TELEGRAM_BOT_TOKEN

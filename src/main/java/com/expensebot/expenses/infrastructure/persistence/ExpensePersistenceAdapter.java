@@ -1,6 +1,7 @@
 package com.expensebot.expenses.infrastructure.persistence;
 
 import com.expensebot.accounts.Channel;
+import com.expensebot.expenses.RegisteredExpense;
 import com.expensebot.expenses.application.ExpenseRepository;
 import com.expensebot.expenses.domain.Expense;
 import com.expensebot.expenses.domain.Money;
@@ -8,8 +9,12 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Currency;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -76,5 +81,28 @@ public class ExpensePersistenceAdapter implements ExpenseRepository {
         if (updated != 1) {
             throw new IllegalStateException("Expense to update not found: " + expense.getId());
         }
+    }
+
+    // "Recent" is when the row was stored (created_at), not the expense date: a correction refers to what the bot
+    // just confirmed. The id breaks ties so the order is stable when two rows share a timestamp.
+    @Override
+    public List<RegisteredExpense> findRecent(UUID userId, Channel channel, Instant since) {
+        return jdbcClient
+                .sql("SELECT e.id, e.amount, e.currency, e.description, c.name AS category_name, e.spent_on "
+                        + "FROM expense e JOIN category c ON c.id = e.category_id "
+                        + "WHERE e.user_id = :userId AND e.source_channel = :channel AND e.created_at >= :since "
+                        + "ORDER BY e.created_at DESC, e.id DESC")
+                .param("userId", userId)
+                .param("channel", channel.name())
+                // The PostgreSQL driver binds OffsetDateTime to TIMESTAMPTZ; it has no mapping for Instant.
+                .param("since", OffsetDateTime.ofInstant(since, ZoneOffset.UTC))
+                .query((rs, rowNum) -> new RegisteredExpense(
+                        rs.getObject("id", UUID.class),
+                        rs.getBigDecimal("amount"),
+                        rs.getString("currency"),
+                        rs.getString("description"),
+                        rs.getString("category_name"),
+                        rs.getObject("spent_on", LocalDate.class)))
+                .list();
     }
 }

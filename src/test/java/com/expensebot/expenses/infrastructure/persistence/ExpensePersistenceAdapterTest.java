@@ -20,7 +20,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Currency;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +38,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Tag("persistence")
 class ExpensePersistenceAdapterTest {
     private static final LocalDate DAY = LocalDate.of(2026, 11, 13);
+    private static final Instant NOW = Instant.parse("2026-11-25T12:00:00Z");
+    private static final Instant SINCE = NOW.minusSeconds(30 * 60);
 
     @Container
     @ServiceConnection
@@ -54,8 +59,27 @@ class ExpensePersistenceAdapterTest {
     }
 
     private Expense expense(UUID owner, UUID categoryId, String amount, String description) {
+        return expense(owner, categoryId, amount, description, Channel.TELEGRAM);
+    }
+
+    private Expense expense(UUID owner, UUID categoryId, String amount, String description, Channel channel) {
         var money = new Money(new BigDecimal(amount), Currency.getInstance("ARS"));
-        return Expense.create(owner, categoryId, money, description, DAY, Channel.TELEGRAM, "$15.000 carnicería");
+        return Expense.create(owner, categoryId, money, description, DAY, channel, "$15.000 carnicería");
+    }
+
+    /** Saves the expense as stored {@code minutesAgo} before {@link #NOW}: every row of a test transaction gets the
+     * same now(), so the time is set by hand. */
+    private Expense storedMinutesAgo(Expense expense, int minutesAgo) {
+        adapter.save(expense);
+        jdbc.update("UPDATE expense SET created_at = ? WHERE id = ?",
+                OffsetDateTime.ofInstant(NOW.minusSeconds(minutesAgo * 60L), ZoneOffset.UTC), expense.getId());
+        return expense;
+    }
+
+    private UUID anotherUser() {
+        UUID other = UUID.randomUUID();
+        jdbc.update("INSERT INTO user_profile (id, email) VALUES (?, ?)", other, other + "@example.com");
+        return other;
     }
 
     @Test
@@ -154,5 +178,49 @@ class ExpensePersistenceAdapterTest {
     void failsToUpdateAnExpenseThatIsNotStored() {
         assertThatThrownBy(() -> adapter.update(expense(userId, Category.OTHER_ID, "100", null)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void findsTheRecentExpensesNewestFirstWithTheirCategoryName() {
+        UUID food = jdbc.queryForObject("SELECT id FROM category WHERE name = 'Alimentación'", UUID.class);
+        var older = storedMinutesAgo(expense(userId, Category.OTHER_ID, "3000", "uber"), 20);
+        var newer = storedMinutesAgo(expense(userId, food, "15000", "carnicería"), 5);
+
+        var recent = adapter.findRecent(userId, Channel.TELEGRAM, SINCE);
+
+        assertThat(recent).extracting("id").containsExactly(newer.getId(), older.getId());
+        assertThat(recent.getFirst()).satisfies(expense -> {
+            assertThat(expense.amount()).isEqualByComparingTo("15000");
+            assertThat(expense.currency()).isEqualTo("ARS");
+            assertThat(expense.description()).isEqualTo("carnicería");
+            assertThat(expense.categoryName()).isEqualTo("Alimentación");
+            assertThat(expense.spentOn()).isEqualTo(DAY);
+        });
+    }
+
+    @Test
+    void recentIncludesTheFirstInstantAndNothingBefore() {
+        var atTheEdge = storedMinutesAgo(expense(userId, Category.OTHER_ID, "100", "café"), 30);
+        storedMinutesAgo(expense(userId, Category.OTHER_ID, "200", "kiosco"), 31);
+
+        assertThat(adapter.findRecent(userId, Channel.TELEGRAM, SINCE)).extracting("id")
+                .containsExactly(atTheEdge.getId());
+    }
+
+    @Test
+    void recentLeavesOutOtherUsersAndOtherChannels() {
+        var mine = storedMinutesAgo(expense(userId, Category.OTHER_ID, "100", "café"), 5);
+        storedMinutesAgo(expense(anotherUser(), Category.OTHER_ID, "200", "kiosco"), 5);
+        storedMinutesAgo(expense(userId, Category.OTHER_ID, "300", "nafta", Channel.WHATSAPP), 5);
+
+        assertThat(adapter.findRecent(userId, Channel.TELEGRAM, SINCE)).extracting("id")
+                .containsExactly(mine.getId());
+    }
+
+    @Test
+    void recentIsEmptyWhenNothingWasStoredInTheWindow() {
+        storedMinutesAgo(expense(userId, Category.OTHER_ID, "100", "café"), 60);
+
+        assertThat(adapter.findRecent(userId, Channel.TELEGRAM, SINCE)).isEmpty();
     }
 }

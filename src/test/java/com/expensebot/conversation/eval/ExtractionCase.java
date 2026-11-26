@@ -17,9 +17,13 @@ import java.util.stream.Stream;
  *                         amount is missing; null when the message is not an expense
  * @param extraCategories  categories the user created, offered to the model next to the base catalog
  * @param tags             the kinds of difficulty the case covers, for the per-tag breakdown
+ * @param correction       true when the message corrects an expense already recorded. Then amount, description and
+ *                         category are the new values (null = unchanged): an unexpected value would overwrite data
+ * @param reference        for a correction, how the user names the expense; shown for a human, not scored
  */
 public record ExtractionCase(String id, String message, BigDecimal amount, List<BigDecimal> amountCandidates,
-                             String description, String category, List<String> extraCategories, List<String> tags) {
+                             String description, String category, List<String> extraCategories, List<String> tags,
+                             Boolean correction, String reference) {
 
     /** The catalog Flyway seeds, in the same order. */
     public static final List<String> BASE_CATEGORIES =
@@ -36,7 +40,9 @@ public record ExtractionCase(String id, String message, BigDecimal amount, List<
         /** It says what was bought but not how much: ask for the amount. */
         ASK_AMOUNT,
         /** Neither amount nor what was bought: ask to rephrase. */
-        NOT_AN_EXPENSE
+        NOT_AN_EXPENSE,
+        /** It changes an expense already recorded. */
+        CORRECTION
     }
 
     public ExtractionCase {
@@ -48,6 +54,9 @@ public record ExtractionCase(String id, String message, BigDecimal amount, List<
     }
 
     public Kind kind() {
+        if (isCorrection()) {
+            return Kind.CORRECTION;
+        }
         if (amount != null) {
             return Kind.FOUND;
         }
@@ -55,6 +64,10 @@ public record ExtractionCase(String id, String message, BigDecimal amount, List<
             return Kind.AMBIGUOUS;
         }
         return description != null ? Kind.ASK_AMOUNT : Kind.NOT_AN_EXPENSE;
+    }
+
+    public boolean isCorrection() {
+        return Boolean.TRUE.equals(correction);
     }
 
     /** The category names the model is offered for this message. */

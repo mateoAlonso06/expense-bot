@@ -41,8 +41,11 @@ final class CategoryMatcher {
                 .findFirst();
     }
 
-    /** "  Alimentación " and "alimentacion" become the same text: NFD splits "ó" into "o" + an accent mark. */
-    private static String normalize(String text) {
+    /**
+     * "  Alimentación " and "alimentacion" become the same text: NFD splits "ó" into "o" + an accent mark. Also used
+     * to match the expense a correction names ("la nafta") against recent descriptions.
+     */
+    static String normalize(String text) {
         String withoutAccents = ACCENTS.matcher(Normalizer.normalize(text, Normalizer.Form.NFD)).replaceAll("");
         return SPACES.matcher(withoutAccents.strip()).replaceAll(" ").toLowerCase(Locale.ROOT);
     }

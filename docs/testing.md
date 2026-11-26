@@ -2,7 +2,7 @@
 
 What kinds of tests this project has, what each one covers, what it uses, and how they could be grouped into suites for CI.
 
-Current state: **294 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
+Current state: **303 tests** (plus the opt-in LLM tests), run with `./mvnw test` (JDK 21). Every test class carries a JUnit `@Tag` with its category, and two Maven profiles select suites by tag.
 
 ## Glossary
 
@@ -21,8 +21,8 @@ Current state: **294 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 
 | # | Category | Tests | What it proves | Uses | Needs Docker |
 |---|---|---|---|---|---|
-| 1 | Domain / pure unit | 97 | Invariants and logic of plain objects: factories, validation, formatting, mapping, eval scoring | JUnit 5, AssertJ | No |
-| 2 | Unit with mocks | 87 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
+| 1 | Domain / pure unit | 102 | Invariants and logic of plain objects: factories, validation, formatting, mapping, eval scoring | JUnit 5, AssertJ | No |
+| 2 | Unit with mocks | 91 | A use case or adapter does the right thing given collaborators that answer in a known way | JUnit 5, Mockito (`@ExtendWith(MockitoExtension.class)`) | No |
 | 3 | HTTP client | 10 | The Telegram client sends the right requests and handles error responses | `MockRestServiceServer` | No |
 | 4 | Web slice | 33 | Controllers, security rules (JWT, CORS, webhook secret) and filters answer the right status codes | `@WebMvcTest`, `@Import(SecurityConfig)` | No |
 | 5 | Persistence slice | 52 | SQL, Flyway migrations and constraints behave correctly on a real PostgreSQL | `@DataJpaTest`, Testcontainers (Postgres 17) | **Yes** |
@@ -30,9 +30,9 @@ Current state: **294 tests** (plus the opt-in LLM tests), run with `./mvnw test`
 | 7 | Flow | 8 | A Telegram update posted to the webhook goes through the whole application and produces the right reply | `@SpringBootTest`, Testcontainers, a local fake Telegram server | **Yes** |
 | 8 | Smoke | 2 | The application context starts with all beans wired, and the Spring AI `ChatClient.Builder` exists without an API key | `@SpringBootTest`, Testcontainers | **Yes** |
 | 9 | LLM connection | 1 | The OpenAI configuration (key, model) works end to end with one real call. **Opt-in and not part of any suite**: it costs tokens | `@SpringBootTest`, a real `OPENAI_API_KEY` | **Yes** |
-| 9 | LLM extraction eval | 1 | The real extractor runs over the labeled dataset in `eval/extraction/` and writes a report (amount, category, `Other` fallback, per tag). It measures and never fails on a low score. **Opt-in and not part of any suite**: one call per case. See the README | `@SpringBootTest` with only Spring AI and the extractor, a real `OPENAI_API_KEY` | No |
+| 9 | LLM extraction eval | 1 | The real extractor runs over the labeled dataset in `eval/extraction/` and writes a report (amount, category, `Other` fallback, per tag). It measures and never fails on a low score. **Opt-in and not part of any suite**: two calls per case (intent, then reading). See the README | `@SpringBootTest` with only Spring AI and the extractor, a real `OPENAI_API_KEY` | No |
 
-232 tests run without Docker; 62 need it.
+241 tests run without Docker; 62 need it.
 
 ## Where each test lives
 

@@ -11,15 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.text.NumberFormat;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.util.Currency;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,9 +34,6 @@ import java.util.UUID;
 @Slf4j
 @Service
 class RegisterExpenseFromText {
-    private static final Locale ARGENTINA = Locale.forLanguageTag("es-AR");
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
     static final String ONLY_TEXT = "Por ahora solo entiendo mensajes de texto. "
             + "Escribime el gasto, por ejemplo: \"$15.000 carnicería\".";
     static final String REPHRASE = "No pude entender el gasto. "
@@ -55,6 +47,7 @@ class RegisterExpenseFromText {
     private final RegisterExpenseUseCase registerExpense;
     private final ExpenseExtractor expenseExtractor;
     private final PendingClarificationRepository pendingClarifications;
+    private final CorrectRecentExpense correctRecentExpense;
     private final Clock clock;
     private final Duration clarificationTtl;
 
@@ -62,12 +55,14 @@ class RegisterExpenseFromText {
                             RegisterExpenseUseCase registerExpense,
                             ExpenseExtractor expenseExtractor,
                             PendingClarificationRepository pendingClarifications,
+                            CorrectRecentExpense correctRecentExpense,
                             Clock clock,
                             @Value("${conversation.clarification.ttl:10m}") Duration clarificationTtl) {
         this.listCategories = listCategories;
         this.registerExpense = registerExpense;
         this.expenseExtractor = expenseExtractor;
         this.pendingClarifications = pendingClarifications;
+        this.correctRecentExpense = correctRecentExpense;
         this.clock = clock;
         this.clarificationTtl = clarificationTtl;
     }
@@ -107,11 +102,22 @@ class RegisterExpenseFromText {
      */
     private String newMessage(Extraction extraction, UUID userId, IncomingMessage message,
                               List<CategoryView> categories, Instant now) {
+        Instant questionExpiresAt = now.plus(clarificationTtl);
         return switch (extraction) {
             case Extraction.Found found -> storeNew(found, userId, message, categories);
-            case Extraction.MissingAmount missing when missing.describesAPurchase() ->
-                    askForAmount(missing, userId, message, now);
-            case Extraction.AmbiguousAmount ambiguous -> askWhichAmount(ambiguous, userId, message, now);
+            case Extraction.MissingAmount missing when missing.describesAPurchase() -> {
+                PendingClarification question = PendingClarification.missingAmount(userId, message.channel(),
+                        message.text(), missing.description(), missing.categoryName(), questionExpiresAt);
+                yield saveAndAsk(question);
+            }
+            case Extraction.AmbiguousAmount ambiguous -> {
+                PendingClarification question = PendingClarification.ambiguousAmount(userId, message.channel(),
+                        message.text(), ambiguous.description(), ambiguous.categoryName(), ambiguous.candidates(),
+                        questionExpiresAt);
+                yield saveAndAsk(question);
+            }
+            case Extraction.Correction correction ->
+                    correctRecentExpense.replyTo(userId, message.channel(), correction, categories);
             // nothing to ask about: neither an amount nor what was bought
             case Extraction.MissingAmount missing -> REPHRASE;
             case Extraction.Unreadable unreadable -> REPHRASE;
@@ -123,24 +129,17 @@ class RegisterExpenseFromText {
         return store(userId, message, found.draft(), message.text(), categories).orElse(REPHRASE);
     }
 
-    private String askForAmount(Extraction.MissingAmount missing, UUID userId, IncomingMessage message, Instant now) {
-        return ask(PendingClarification.missingAmount(userId, message.channel(), message.text(),
-                missing.description(), missing.categoryName(), now.plus(clarificationTtl)));
-    }
-
-    private String askWhichAmount(Extraction.AmbiguousAmount ambiguous, UUID userId, IncomingMessage message,
-                                  Instant now) {
-        return ask(PendingClarification.ambiguousAmount(userId, message.channel(), message.text(),
-                ambiguous.description(), ambiguous.categoryName(), ambiguous.candidates(),
-                now.plus(clarificationTtl)));
-    }
-
     /**
      * A question is waiting. A message that only gives an amount answers it; a message that describes something
-     * bought is a new expense and replaces the question; anything else repeats the question.
+     * bought is a new expense and replaces the question; anything else repeats the question, a correction of another
+     * expense included (it could be meant for the expense still waiting, which is not stored yet).
      */
     private String answerTo(PendingClarification question, Extraction extraction, UUID userId,
                             IncomingMessage message, List<CategoryView> categories, Instant now) {
+        // "eran 15000" reads as a correction on its own, but the bot is waiting for an amount: it is the answer.
+        if (extraction instanceof Extraction.Correction correction && correction.onlyChangesTheAmount()) {
+            extraction = new Extraction.Found(new ExpenseDraft(correction.amount(), null, null));
+        }
         if (extraction.describesAPurchase()) {
             if (extraction instanceof Extraction.Found) {
                 // the new expense is stored and the old question is dropped; asking replaces it on its own
@@ -159,19 +158,21 @@ class RegisterExpenseFromText {
                 return summary.get();
             }
         }
-        return ASK_AGAIN + question(question);
+        return ASK_AGAIN + questionText(question);
     }
 
-    private String ask(PendingClarification clarification) {
-        pendingClarifications.save(clarification);
-        return question(clarification);
+    /** Remembers the question until the user answers (or it expires) and returns its text. */
+    private String saveAndAsk(PendingClarification question) {
+        pendingClarifications.save(question);
+        return questionText(question);
     }
 
-    private static String question(PendingClarification clarification) {
+    /** "¿Cuánto gastaste en café?" or "¿Fueron $5.000 o $3.000?". */
+    private static String questionText(PendingClarification clarification) {
         if (!clarification.isAmbiguous()) {
             return ASK_AMOUNT.formatted(clarification.getDescription());
         }
-        List<String> amounts = clarification.getAmountCandidates().stream().map(RegisterExpenseFromText::money)
+        List<String> amounts = clarification.getAmountCandidates().stream().map(ExpenseText::money)
                 .toList();
         String options = String.join(", ", amounts.subList(0, amounts.size() - 1)) + " o " + amounts.getLast();
         return ASK_WHICH_AMOUNT.formatted(options);
@@ -186,7 +187,7 @@ class RegisterExpenseFromText {
         try {
             RegisteredExpense stored = registerExpense.execute(new RegisterExpenseCommand(userId, draft.amount(),
                     draft.description(), categoryId, null, message.channel(), originalMessage));
-            return Optional.of(summary(stored));
+            return Optional.of("Registré " + ExpenseText.summary(stored) + ".");
         } catch (IllegalArgumentException e) {
             // The model read something the expense rules reject (for example a zero amount or too many decimals).
             // The use case also throws this for an unknown category, which only happens if the category was deleted
@@ -195,25 +196,5 @@ class RegisterExpenseFromText {
                     message.channel(), message.eventId(), e.getMessage());
             return Optional.empty();
         }
-    }
-
-    private static String summary(RegisteredExpense expense) {
-        // A new NumberFormat per call: the class is not thread-safe, so a shared static instance would be a bug.
-        NumberFormat amount = NumberFormat.getNumberInstance(ARGENTINA);
-        amount.setMinimumFractionDigits(2);
-        amount.setMaximumFractionDigits(2);
-        String symbol = Currency.getInstance(expense.currency()).getSymbol(ARGENTINA);
-        return "Registré %s%s en %s (%s).".formatted(symbol, amount.format(expense.amount()),
-                expense.categoryName(), DATE.format(expense.spentOn()));
-    }
-
-    /**
-     * "$5.000" or "$3.000,50": no decimals unless the amount has them.
-     */
-    private static String money(BigDecimal value) {
-        NumberFormat amount = NumberFormat.getNumberInstance(ARGENTINA);
-        amount.setMinimumFractionDigits(value.stripTrailingZeros().scale() > 0 ? 2 : 0);
-        amount.setMaximumFractionDigits(2);
-        return "$" + amount.format(value);
     }
 }

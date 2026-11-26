@@ -81,9 +81,20 @@ public record ExtractionDataset(List<ExtractionCase> cases, String version) {
                 throw invalid(lineNumber, "amountCandidates must be two or more distinct positive amounts");
             }
         }
+        if (!c.isCorrection() && c.reference() != null) {
+            throw invalid(lineNumber, "only a correction has a reference");
+        }
         switch (c.kind()) {
             case FOUND, AMBIGUOUS -> requireOfferedCategory(c, lineNumber);
             case ASK_AMOUNT -> {
+                if (c.category() != null) {
+                    requireOfferedCategory(c, lineNumber);
+                }
+            }
+            case CORRECTION -> {
+                if (!c.amountCandidates().isEmpty()) {
+                    throw invalid(lineNumber, "a correction has no amountCandidates");
+                }
                 if (c.category() != null) {
                     requireOfferedCategory(c, lineNumber);
                 }

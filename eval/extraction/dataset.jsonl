@@ -44,3 +44,11 @@
 {"id":"gas-dont-remember","message":"pagué el gas, 18.000 o 18.500 no me acuerdo","amount":null,"amountCandidates":["18000","18500"],"description":"gas","category":"Servicios","tags":["ambiguous","amount-format"]}
 {"id":"farmacia-correction","message":"farmacia 4500, perdón, 5400","amount":"5400","description":"farmacia","category":"Salud","tags":["self-correction"]}
 {"id":"uber-correction","message":"uber 3000 no, 3500","amount":"3500","description":"uber","category":"Transporte","tags":["self-correction","brand"]}
+{"id":"correction-amount","message":"no, eran 15500","correction":true,"amount":"15500","tags":["correction"]}
+{"id":"correction-amount-mistake","message":"me equivoqué, fueron 2300","correction":true,"amount":"2300","tags":["correction"]}
+{"id":"correction-amount-reference","message":"la nafta eran 3500","correction":true,"amount":"3500","reference":"la nafta","tags":["correction","reference"]}
+{"id":"correction-category","message":"categoría ocio","correction":true,"category":"Ocio","tags":["correction"]}
+{"id":"correction-category-reference","message":"el uber ponelo en transporte","correction":true,"category":"Transporte","reference":"el uber","tags":["correction","reference"]}
+{"id":"correction-description","message":"era asado, no carnicería","correction":true,"description":"asado","reference":"carnicería","tags":["correction","reference"]}
+{"id":"correction-not-editable","message":"cambiá la fecha a ayer","correction":true,"tags":["correction","not-editable"]}
+{"id":"correction-amount-and-category","message":"perdón, eran 1800 y era de salud","correction":true,"amount":"1800","category":"Salud","tags":["correction"]}

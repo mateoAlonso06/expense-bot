@@ -123,7 +123,7 @@ The LLM extractor is measured against a labeled dataset, so a prompt or model ch
 - `eval/extraction/HISTORY.md`: one row per recorded run. Compare rows only when the dataset version is the same.
 - `eval/extraction/runs/<date>_<time>_<model>_<extractor>/`: `report.md` (summary, per tag, failed cases) and `report.json` of each recorded run.
 
-It makes one real OpenAI call per case (it costs tokens) and needs `OPENAI_API_KEY`, but no Docker:
+It makes two real OpenAI calls per case (the intent, then the reading) (it costs tokens) and needs `OPENAI_API_KEY`, but no Docker:
 
 ```bash
 set -a && . ./.env && set +a

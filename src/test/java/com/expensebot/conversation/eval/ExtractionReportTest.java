@@ -27,14 +27,14 @@ class ExtractionReportTest {
 
     private static ExtractionReport report(String note) {
         ExtractionCase ok = new ExtractionCase("luz", "luz 100", new BigDecimal("100"), null, "luz", "Servicios",
-                null, List.of("plain"));
+                null, List.of("plain"), null, null);
         ExtractionCase fallback = new ExtractionCase("osde", "osde | 120k", new BigDecimal("120000"), null, "osde",
-                "Salud", null, List.of("brand"));
+                "Salud", null, List.of("brand"), null, null);
         ExtractionCase greeting = new ExtractionCase("hola", "hola", null, null, null, null, null,
-                List.of("not-an-expense"));
+                List.of("not-an-expense"), null, null);
         ExtractionCase twoAmounts = new ExtractionCase("super", "súper 5000 o 3000", null,
                 List.of(new BigDecimal("5000"), new BigDecimal("3000")), "súper", "Alimentación", null,
-                List.of("ambiguous"));
+                List.of("ambiguous"), null, null);
         List<ExtractionOutcome> outcomes = List.of(
                 new ExtractionOutcome(ok, new Extraction.Found(
                         new ExpenseDraft(new BigDecimal("100"), "luz", "Servicios")), "Servicios", 100),

@@ -102,11 +102,20 @@ class RegisterExpenseFromText {
      */
     private String newMessage(Extraction extraction, UUID userId, IncomingMessage message,
                               List<CategoryView> categories, Instant now) {
+        Instant questionExpiresAt = now.plus(clarificationTtl);
         return switch (extraction) {
             case Extraction.Found found -> storeNew(found, userId, message, categories);
-            case Extraction.MissingAmount missing when missing.describesAPurchase() ->
-                    askForAmount(missing, userId, message, now);
-            case Extraction.AmbiguousAmount ambiguous -> askWhichAmount(ambiguous, userId, message, now);
+            case Extraction.MissingAmount missing when missing.describesAPurchase() -> {
+                PendingClarification question = PendingClarification.missingAmount(userId, message.channel(),
+                        message.text(), missing.description(), missing.categoryName(), questionExpiresAt);
+                yield saveAndAsk(question);
+            }
+            case Extraction.AmbiguousAmount ambiguous -> {
+                PendingClarification question = PendingClarification.ambiguousAmount(userId, message.channel(),
+                        message.text(), ambiguous.description(), ambiguous.categoryName(), ambiguous.candidates(),
+                        questionExpiresAt);
+                yield saveAndAsk(question);
+            }
             case Extraction.Correction correction ->
                     correctRecentExpense.replyTo(userId, message.channel(), correction, categories);
             // nothing to ask about: neither an amount nor what was bought
@@ -118,18 +127,6 @@ class RegisterExpenseFromText {
     private String storeNew(Extraction.Found found, UUID userId, IncomingMessage message,
                             List<CategoryView> categories) {
         return store(userId, message, found.draft(), message.text(), categories).orElse(REPHRASE);
-    }
-
-    private String askForAmount(Extraction.MissingAmount missing, UUID userId, IncomingMessage message, Instant now) {
-        return ask(PendingClarification.missingAmount(userId, message.channel(), message.text(),
-                missing.description(), missing.categoryName(), now.plus(clarificationTtl)));
-    }
-
-    private String askWhichAmount(Extraction.AmbiguousAmount ambiguous, UUID userId, IncomingMessage message,
-                                  Instant now) {
-        return ask(PendingClarification.ambiguousAmount(userId, message.channel(), message.text(),
-                ambiguous.description(), ambiguous.categoryName(), ambiguous.candidates(),
-                now.plus(clarificationTtl)));
     }
 
     /**
@@ -161,15 +158,17 @@ class RegisterExpenseFromText {
                 return summary.get();
             }
         }
-        return ASK_AGAIN + question(question);
+        return ASK_AGAIN + questionText(question);
     }
 
-    private String ask(PendingClarification clarification) {
-        pendingClarifications.save(clarification);
-        return question(clarification);
+    /** Remembers the question until the user answers (or it expires) and returns its text. */
+    private String saveAndAsk(PendingClarification question) {
+        pendingClarifications.save(question);
+        return questionText(question);
     }
 
-    private static String question(PendingClarification clarification) {
+    /** "¿Cuánto gastaste en café?" or "¿Fueron $5.000 o $3.000?". */
+    private static String questionText(PendingClarification clarification) {
         if (!clarification.isAmbiguous()) {
             return ASK_AMOUNT.formatted(clarification.getDescription());
         }

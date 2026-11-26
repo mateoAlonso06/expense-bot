@@ -23,7 +23,7 @@ Today a correction is read as a new message: at best "no, eran 15500" stores a s
 - [x] P3 Classifier inside the adapter: intent call (expense vs correction, few-shot incl. self-corrections as expense), expense prompt back to the #11 version, focused correction prompt; `ExpenseExtractor` port unchanged; eval extractor hash covers the whole `llm` package; recorded run compared with P2 and #11. (`9e50eb6`)
 - [x] P4 Flow: `CorrectRecentExpense` in `conversation.application`, called from `RegisterExpenseFromText` for a `Correction`; pending-question rule (an amount-only correction without reference answers the waiting question); tests with mocks (`ListRecentExpensesUseCase` interface only). Must include an explicit test: bot asks "¿Cuánto gastaste en café?", user answers "eran 15000" (likely classified CORRECTION) -> the expense is stored, not the question repeated. Until P4 this is a regression from #11 (the classifier has no pending-question context and the eval cannot see it), so P3 must not be merged alone.
 - [x] P5 `expenses`: `ListRecentExpensesUseCase` (user, channel, since; newest first) with `JdbcClient`; Postgres tests. Done before P4: a bean with no implementation would stop the application context. The window property (30 minutes) moves to P4 (it belongs to the conversation). (`a31ae48`)
-- [ ] P6 Flow test: store -> correct, through the Telegram webhook.
+- [x] P6 Flow test: store -> correct, through the Telegram webhook.
 
 ## Acceptance criteria (from #13)
 - Given a recent expense in the conversation, a correction updates the editable fields and the bot confirms.
@@ -49,5 +49,6 @@ P4 done (not committed): `CorrectRecentExpense` (package-private service in `con
 Readability pass agreed with the user: `replyTo` reads as steps; `candidates(...)`, `describes(...)`, `searchableName(...)` and `edit(...)` named; the three catches stay (each documented failure of the edit has its own reply).
 P4 committed as `cb538f6`.
 Readability refactor of the clarification flow (not committed, user request): `newMessage` builds the `PendingClarification` in its own case block and passes it to `saveAndAsk` (was `ask`, hid the save); `askForAmount`/`askWhichAmount` removed; `question` renamed `questionText`. No behavior change; full suite 334 run, 0 failures.
-Next: P6 (flow test through the Telegram webhook: store -> correct), then the PR closing #13.
+P6 done: three cases added to `TelegramReplyFlowTest` (store then correct the amount; a reference naming two recent expenses asks which and changes nothing; "eran 8000" while a question waits answers it). Test-only change. Full suite: 337 run (336 + 1 opt-in skipped), 0 failures.
+Next: the PR closing #13.
 Planned later: #44 Jev for the intent call; #45 compare newer LLMs (configurable model, mixed cheap-classifier/strong-reader setup).

@@ -185,6 +185,70 @@ class TelegramReplyFlowTest {
     }
 
     @Test
+    void aCorrectionChangesTheExpenseJustRegistered() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        UUID userId = linkedUser(telegramUser);
+        when(expenseExtractor.extract(eq("nafta 5000"), anyList()))
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("5000"), "nafta", "transporte")));
+        when(expenseExtractor.extract(eq("no, eran 5500"), anyList()))
+                .thenReturn(new Extraction.Correction(new BigDecimal("5500"), null, null, null));
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "nafta 5000");
+        assertThat(nextReplyText()).startsWith("Registré $5.000,00 en Transporte (");
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "no, eran 5500");
+        assertThat(nextReplyText()).startsWith("Corregí nafta: $5.500,00 en Transporte (");
+        // the same expense changed: no second one was stored
+        assertThat(expenses(userId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT amount FROM expense WHERE user_id = ?", BigDecimal.class, userId))
+                .isEqualByComparingTo("5500");
+    }
+
+    @Test
+    void aCorrectionThatNamesSeveralRecentExpensesAsksWhichOneAndChangesNothing() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        UUID userId = linkedUser(telegramUser);
+        when(expenseExtractor.extract(eq("nafta YPF 5000"), anyList()))
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("5000"), "nafta YPF", "transporte")));
+        when(expenseExtractor.extract(eq("nafta Shell 4000"), anyList()))
+                .thenReturn(new Extraction.Found(new ExpenseDraft(new BigDecimal("4000"), "nafta Shell", "transporte")));
+        when(expenseExtractor.extract(eq("la nafta eran 3500"), anyList()))
+                .thenReturn(new Extraction.Correction(new BigDecimal("3500"), null, null, "la nafta"));
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "nafta YPF 5000");
+        assertThat(nextReplyText()).startsWith("Registré");
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "nafta Shell 4000");
+        assertThat(nextReplyText()).startsWith("Registré");
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "la nafta eran 3500");
+
+        assertThat(nextReplyText()).startsWith("Encontré varios gastos recientes de «la nafta»")
+                .contains("nafta YPF ($5.000)", "nafta Shell ($4.000)");
+        assertThat(jdbc.queryForList("SELECT amount FROM expense WHERE user_id = ? ORDER BY amount",
+                BigDecimal.class, userId))
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("4000"), new BigDecimal("5000"));
+    }
+
+    @Test
+    void anAmountOnlyCorrectionAnswersTheWaitingQuestionInsteadOfCorrecting() throws Exception {
+        long telegramUser = TELEGRAM_USER_IDS.incrementAndGet();
+        UUID userId = linkedUser(telegramUser);
+        when(expenseExtractor.extract(eq("almuerzo con el equipo"), anyList()))
+                .thenReturn(new Extraction.MissingAmount("almuerzo", "alimentacion"));
+        // "eran 8000" reads like a correction, but the bot is waiting for the amount of the lunch
+        when(expenseExtractor.extract(eq("eran 8000"), anyList()))
+                .thenReturn(new Extraction.Correction(new BigDecimal("8000"), null, null, null));
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "almuerzo con el equipo");
+        assertThat(nextReplyText()).isEqualTo("¿Cuánto gastaste en almuerzo?");
+
+        postUpdate(UPDATE_IDS.incrementAndGet(), telegramUser, "eran 8000");
+        assertThat(nextReplyText()).startsWith("Registré $8.000,00 en Alimentación (");
+        assertThat(expenses(userId)).isEqualTo(1);
+        assertThat(pendingQuestions(userId)).isZero();
+    }
+
+    @Test
     void aCodeCannotBeUsedTwice() throws Exception {
         String code = requestLinkCode.execute(newUser()).code();
         postUpdate(UPDATE_IDS.incrementAndGet(), TELEGRAM_USER_IDS.incrementAndGet(), code);

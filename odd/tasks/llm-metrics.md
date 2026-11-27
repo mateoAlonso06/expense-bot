@@ -19,7 +19,7 @@ Each user message costs two model calls (classify the intent, then read an expen
 ## Tasks
 - [x] P1 Flow test with a fake OpenAI server (local HTTP): a real `ChatClient` call produces `gen_ai` latency and token metrics in the Prometheus scrape; check whether the chat model observation can reach the use case set on the `ChatClient` call.
 - [x] P2 `expensebot.use_case` tag on the three calls and the `ObservationFilter`; tests.
-- [ ] P3 README: metric names and tags.
+- [x] P3 README: metric names and tags; `/actuator/prometheus` public.
 
 ## Acceptance criteria (from #15)
 - Micrometer metrics for model latency and input/output tokens are exposed at `/actuator/prometheus`.
@@ -32,4 +32,6 @@ P1 done (`LlmMetricsFlowTest`, fake OpenAI at `/v1/chat/completions`, `@AutoConf
 Open point for P3: `/actuator/prometheus` requires a JWT today (only `/actuator/health` is public), so a Prometheus server could not scrape it.
 P1 committed as `6edefb4`.
 P2 done (not committed): `LlmUseCase` enum (tag `expensebot.use_case`, values `classify-intent`, `read-expense`, `read-correction`) put in the request context with `.advisors(a -> a.param(...))`; `LlmUseCaseObservationFilter` (`@Component`, Boot registers `ObservationFilter` beans) tags every `ChatModelObservationContext`, walking parents up to the `ChatClientObservationContext`; `unknown` when no use case (Prometheus needs the same tag names on every meter of one name). Tests: 4 filter unit tests, flow test now runs `extract` (two calls) and checks latency and tokens per use case. Full suite: 342 run (341 + 1 opt-in skipped), 0 failures.
-Next: P3.
+P2 committed as `dd157aa`.
+P3 done (not committed): decision with the user: `/actuator/prometheus` is `permitAll` in dev (Prometheus sends no JWT); access is restricted at deploy time. The flow test now reads the endpoint through MockMvc without a token (fails with 401 without the rule, checked). README "Observability" section kept short (endpoint, the two metrics, `expensebot_use_case`); detail in `docs/observability.md`: metrics, tags (values observed in the scrape), how a new call declares its use case, PromQL examples; prompt/completion logging stays off (Spring AI defaults `log-prompt`/`log-completion` false, not overridden). Full suite: 342 run (341 + 1 opt-in skipped), 0 failures.
+Next: the PR closing #15 (last MVP issue).

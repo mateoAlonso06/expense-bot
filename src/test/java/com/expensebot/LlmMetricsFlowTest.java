@@ -3,16 +3,17 @@ package com.expensebot;
 import com.expensebot.conversation.application.Extraction;
 import com.expensebot.conversation.infrastructure.llm.SpringAiExpenseExtractor;
 import com.sun.net.httpserver.HttpServer;
-import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.micrometer.metrics.test.autoconfigure.AutoConfigureMetrics;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -22,15 +23,18 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Real {@code ChatClient} calls, answered by a tiny local HTTP server that plays OpenAI, are measured by Spring AI in
- * latency and tokens, tagged with the use case of each call. The assertions read the Prometheus scrape, the same text
- * {@code /actuator/prometheus} renders.
+ * latency and tokens, tagged with the use case of each call. The assertions read {@code /actuator/prometheus}, which
+ * answers without a token so a Prometheus server can scrape it.
  */
 @SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
 // Spring Boot tests keep metrics in memory only; this turns the Prometheus registry on.
 @AutoConfigureMetrics
+@AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Tag("flow")
 class LlmMetricsFlowTest {
@@ -39,7 +43,7 @@ class LlmMetricsFlowTest {
     @Autowired
     private SpringAiExpenseExtractor extractor;
     @Autowired
-    private PrometheusMeterRegistry prometheus;
+    private MockMvc mockMvc;
 
     @DynamicPropertySource
     static void openAiProperties(DynamicPropertyRegistry registry) {
@@ -53,12 +57,15 @@ class LlmMetricsFlowTest {
     }
 
     @Test
-    void eachModelCallIsMeasuredInLatencyAndTokensUnderItsUseCase() {
+    void eachModelCallIsMeasuredInLatencyAndTokensUnderItsUseCase() throws Exception {
         // Two model calls: classify the intent, then read the expense.
         assertThat(extractor.extract("nafta 5000", List.of("Transporte", "Otros")))
                 .isInstanceOf(Extraction.Found.class);
 
-        String scrape = prometheus.scrape();
+        // no Authorization header: the endpoint is public
+        String scrape = mockMvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
         for (String useCase : List.of("classify-intent", "read-expense")) {
             String tag = "expensebot_use_case=\"" + useCase + "\"";
             // latency: one call, no error

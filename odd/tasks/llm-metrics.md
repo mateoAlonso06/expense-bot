@@ -18,7 +18,7 @@ Each user message costs two model calls (classify the intent, then read an expen
 
 ## Tasks
 - [x] P1 Flow test with a fake OpenAI server (local HTTP): a real `ChatClient` call produces `gen_ai` latency and token metrics in the Prometheus scrape; check whether the chat model observation can reach the use case set on the `ChatClient` call.
-- [ ] P2 `expensebot.use_case` tag on the three calls and the `ObservationFilter`; tests.
+- [x] P2 `expensebot.use_case` tag on the three calls and the `ObservationFilter`; tests.
 - [ ] P3 README: metric names and tags.
 
 ## Acceptance criteria (from #15)
@@ -30,4 +30,6 @@ Each user message costs two model calls (classify the intent, then read an expen
 Branch `feat/llm-metrics` from `main` (`c73c0b5`).
 P1 done (`LlmMetricsFlowTest`, fake OpenAI at `/v1/chat/completions`, `@AutoConfigureMetrics` because Boot tests keep metrics in memory only). Observed in the scrape: `gen_ai_client_operation_seconds` (tags `error`, `gen_ai_operation_name`, `gen_ai_request_model`, `gen_ai_response_model`, `gen_ai_system`) and `gen_ai_client_token_usage_total` (same tags plus `gen_ai_token_type` input/output/total); also `spring_ai_chat_client_seconds` and `spring_ai_advisor_seconds`. Probe finding: the parent of the chat model observation is an advisor observation (`spring.ai.advisor`, "Tool Calling Advisor"), not the `ChatClient` one, so the filter must walk up the parents until the `ChatClientObservationContext`. Full suite: 338 run (337 + 1 opt-in skipped), 0 failures.
 Open point for P3: `/actuator/prometheus` requires a JWT today (only `/actuator/health` is public), so a Prometheus server could not scrape it.
-Next: P2.
+P1 committed as `6edefb4`.
+P2 done (not committed): `LlmUseCase` enum (tag `expensebot.use_case`, values `classify-intent`, `read-expense`, `read-correction`) put in the request context with `.advisors(a -> a.param(...))`; `LlmUseCaseObservationFilter` (`@Component`, Boot registers `ObservationFilter` beans) tags every `ChatModelObservationContext`, walking parents up to the `ChatClientObservationContext`; `unknown` when no use case (Prometheus needs the same tag names on every meter of one name). Tests: 4 filter unit tests, flow test now runs `extract` (two calls) and checks latency and tokens per use case. Full suite: 342 run (341 + 1 opt-in skipped), 0 failures.
+Next: P3.

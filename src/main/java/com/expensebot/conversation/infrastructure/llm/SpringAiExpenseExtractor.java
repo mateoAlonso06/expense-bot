@@ -89,7 +89,8 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
     }
 
     private Extraction readExpense(String text, List<String> categoryNames) {
-        ExtractedExpense extracted = read(EXPENSE_PROMPT, text, categoryNames, ExtractedExpense.class);
+        ExtractedExpense extracted = read(LlmUseCase.READ_EXPENSE, EXPENSE_PROMPT, text, categoryNames,
+                ExtractedExpense.class);
         if (extracted == null) {
             return new Extraction.Unreadable();
         }
@@ -108,7 +109,8 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
     }
 
     private Extraction readCorrection(String text, List<String> categoryNames) {
-        ExtractedCorrection extracted = read(CORRECTION_PROMPT, text, categoryNames, ExtractedCorrection.class);
+        ExtractedCorrection extracted = read(LlmUseCase.READ_CORRECTION, CORRECTION_PROMPT, text,
+                categoryNames, ExtractedCorrection.class);
         if (extracted == null) {
             return new Extraction.Unreadable();
         }
@@ -117,9 +119,11 @@ public class SpringAiExpenseExtractor implements ExpenseExtractor {
     }
 
     /** One call with the given instructions; null when the model did not answer with the JSON we asked for. */
-    private <T> T read(String systemPrompt, String text, List<String> categoryNames, Class<T> answerType) {
+    private <T> T read(LlmUseCase useCase, String systemPrompt, String text, List<String> categoryNames,
+            Class<T> answerType) {
         try {
             return chatClient.prompt()
+                    .advisors(useCase.inRequest())
                     .system(systemPrompt)
                     .user("Categories: " + String.join(", ", categoryNames) + "\nMessage: " + text)
                     .call()

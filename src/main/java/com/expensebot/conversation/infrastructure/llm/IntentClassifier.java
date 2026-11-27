@@ -53,6 +53,7 @@ public class IntentClassifier {
         Objects.requireNonNull(text, "Text is required");
         try {
             IntentAnswer answer = chatClient.prompt()
+                    .advisors(LlmUseCase.CLASSIFY_INTENT.inRequest())
                     .user("Message: " + text)
                     .call()
                     .entity(IntentAnswer.class);

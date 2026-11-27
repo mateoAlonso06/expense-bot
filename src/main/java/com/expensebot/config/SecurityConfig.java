@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        // Scraped by Prometheus, which sends no JWT. Public in dev; restrict it at deploy time.
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         // Telegram has no JWT; the controller checks its shared secret instead.
                         .requestMatchers("/api/telegram/webhook").permitAll()
                         .anyRequest().authenticated())

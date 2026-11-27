@@ -107,6 +107,12 @@ docker volume rm expense-bot_keycloak-data
 docker compose up -d keycloak
 ```
 
+## Observability
+
+Metrics are exposed at `http://localhost:8080/actuator/prometheus` without a token (public in dev; restrict access at deploy time). Traces go over OTLP to Grafana LGTM.
+
+Every LLM call is measured in latency (`gen_ai_client_operation_seconds`) and tokens (`gen_ai_client_token_usage_total`), tagged with `expensebot_use_case`: `classify-intent`, `read-expense` or `read-correction`. All tags, how a new call declares its use case and PromQL examples: [docs/observability.md](docs/observability.md).
+
 ## Tests
 
 ```bash
